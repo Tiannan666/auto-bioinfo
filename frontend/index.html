@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生信分析平台 — BioInfo Platform</title>
+<link rel="stylesheet" href="css/academic-blue.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="js/i18n.js"></script>
+</head>
+<body>
+
+<!-- ====== Sidebar ====== -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="6" fill="#2563EB"/><text x="16" y="22" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">B</text></svg>
+    BioInfo Platform
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="nav-section">Analysis Workflow</div>
+    <a href="#dashboard" data-page="dashboard" class="active">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a href="#data-import" data-page="data-import">
+      <span class="nav-icon">📥</span> Data Import
+    </a>
+    <a href="#quality-control" data-page="quality-control">
+      <span class="nav-icon">🔍</span> Quality Control
+    </a>
+    <a href="#differential" data-page="differential">
+      <span class="nav-icon">🧬</span> Differential Analysis
+    </a>
+    <a href="#enrichment" data-page="enrichment">
+      <span class="nav-icon">🔬</span> Enrichment Analysis
+    </a>
+    <a href="#visualization" data-page="visualization">
+      <span class="nav-icon">📈</span> Visualization
+    </a>
+    <div class="nav-section">Intelligence</div>
+    <a href="#interpretation" data-page="interpretation">
+      <span class="nav-icon">💡</span> Interpretation
+    </a>
+    <a href="#storyline" data-page="storyline">
+      <span class="nav-icon">📖</span> Storyline
+    </a>
+    <div class="nav-section">Output</div>
+    <a href="#report-export" data-page="report-export">
+      <span class="nav-icon">📄</span> Report Export
+    </a>
+    <a href="#scrna" data-page="scrna">
+      <span class="nav-icon">🔬</span> scRNA-seq
+      <span class="badge">Soon</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    v0.3.0 · BioInfo Platform
+  </div>
+</aside>
+
+<!-- ====== Main Area ====== -->
+<div class="main-area">
+  <header class="topbar">
+    <h2 id="pageTitle">Dashboard</h2>
+    <div class="topbar-actions">
+      <span id="keyStatus" style="font-size:12px;color:var(--ab-text-secondary)"></span>
+      <button class="btn btn-sm btn-outline" onclick="openSettings()">⚙ Settings</button>
+    </div>
+  </header>
+  <div class="content-area" id="contentArea">
+    <!-- Pages are rendered here by the SPA router -->
+  </div>
+</div>
+
+<!-- ====== Settings Modal ====== -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-box">
+    <h3>Settings</h3>
+    <div class="form-group">
+      <label class="form-label">DeepSeek API Key</label>
+      <input type="password" class="form-input" id="apiKey" placeholder="sk-xxxxxxxxxxxxxxxx">
+      <div class="form-hint">
+        Get your key at <a href="https://platform.deepseek.com/api_keys" target="_blank" style="color:var(--ab-btn)">platform.deepseek.com</a>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Language / 语言</label>
+      <select class="form-select" id="langSelect" onchange="switchLanguage(this.value)">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <div id="saveStatus" style="font-size:13px;margin-bottom:12px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/pages/dashboard.js"></script>
+<script src="js/pages/data-import.js"></script>
+<script src="js/pages/quality-control.js"></script>
+<script src="js/pages/differential.js"></script>
+<script src="js/pages/enrichment.js"></script>
+<script src="js/pages/visualization.js"></script>
+<script src="js/pages/interpretation.js"></script>
+<script src="js/pages/storyline.js"></script>
+<script src="js/pages/report-export.js"></script>
+<script src="js/pages/scrna.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

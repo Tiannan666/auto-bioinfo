@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+_backup/
+
+# Build output
+dist-electron/
+dist/
+build-pyinstaller/
+*.spec
+
+# Embedded Python runtime (too large, rebuild locally)
+runtime/
+python-embed.zip
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# Test / temp
+test_data/
+test_output/
+test_runtime/
+_wheels/
+_temp/
+
+# Output (generated at runtime)
+output/
+*.xlsx
+*.docx
+*.pptx
+
+# Config (contains API keys)
+config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

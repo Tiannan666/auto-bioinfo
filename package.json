@@ -1,0 +1,45 @@
+{
+  "name": "bioinfo-assistant",
+  "version": "0.3.0",
+  "description": "BioInfo Platform - Intelligent Bioinformatics Analysis",
+  "author": "BioInfo Assistant",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "set ELECTRON_RUN_AS_NODE= && electron .",
+    "build": "set ELECTRON_RUN_AS_NODE= && electron-builder --win --x64",
+    "build:dir": "set ELECTRON_RUN_AS_NODE= && electron-builder --win --x64 --dir"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.bioinfo.assistant",
+    "productName": "BioInfo Platform",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*"
+    ],
+    "extraResources": [
+      { "from": "backend", "to": "backend" },
+      { "from": "backend_server.py", "to": "backend_server.py" },
+      { "from": "frontend", "to": "frontend" },
+      { "from": "runtime", "to": "runtime" }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "unicode": true,
+      "installerLanguages": ["zh_CN", "en_US"],
+      "shortcutName": "BioInfo Platform"
+    }
+  }
+}
