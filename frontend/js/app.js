@@ -2,7 +2,11 @@
 
 // Fallback I18N if i18n.js fails to load (prevents cascading ReferenceErrors)
 if (typeof I18N === 'undefined') {
-  var I18N = { t: function(k) { return k; }, lang: 'en', applyAll: function(){} };
+  var I18N = { t: function(k) { return k; }, lang: 'en', applyAll: function(){}, setLang: function(l){
+    this._lang = l; localStorage.setItem('bioinfo_lang', l); applyI18nAll();
+    var hash = window.location.hash || '#dashboard';
+    if (typeof App !== 'undefined') App.navigate(hash.replace('#', ''));
+  }};
 }
 
 // Self-contained i18n apply function (does not depend on i18n.js being loaded)
@@ -92,6 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
   handleHash();
 
   checkConfig();
+  // Sync topbar language dropdown
+  var tb = document.getElementById('topbarLang');
+  if (tb && typeof I18N !== 'undefined') tb.value = I18N.lang;
   _jsLoaded = true;
 });
 

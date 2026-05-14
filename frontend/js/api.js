@@ -83,12 +83,13 @@ window.openSettings = function() {
   if (keyInput) keyInput.focus();
   var st = document.getElementById('saveStatus');
   if (st) st.style.display = 'none';
-  var langSel = document.getElementById('langSelect');
-  if (langSel) langSel.value = I18N.lang;
 };
 
 window.switchLanguage = function(lang) {
-  I18N.setLang(lang);
+  if (typeof I18N !== 'undefined' && I18N.setLang) I18N.setLang(lang);
+  // Sync topbar dropdown
+  var tb = document.getElementById('topbarLang');
+  if (tb && tb.value !== lang) tb.value = lang;
 };
 
 window.closeSettings = function() {
