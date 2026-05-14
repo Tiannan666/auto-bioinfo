@@ -85,18 +85,6 @@ window.openSettings = function() {
   if (st) st.style.display = 'none';
 };
 
-window.switchLanguage = function(lang) {
-  console.log('[Lang] switching to', lang);
-  if (typeof I18N !== 'undefined' && I18N.setLang) {
-    I18N.setLang(lang);
-  } else {
-    console.error('[Lang] I18N not available');
-  }
-  // Sync topbar dropdown
-  var tb = document.getElementById('topbarLang');
-  if (tb && tb.value !== lang) tb.value = lang;
-};
-
 window.closeSettings = function() {
   var m = document.getElementById('settingsModal');
   if (m) m.classList.remove('open');
