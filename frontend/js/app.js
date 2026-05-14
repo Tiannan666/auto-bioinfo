@@ -3,7 +3,12 @@
 // Fallback I18N if i18n.js fails to load (prevents cascading ReferenceErrors)
 if (typeof I18N === 'undefined') {
   var I18N = { t: function(k) { return k; }, lang: 'en', applyAll: function(){}, setLang: function(l){
-    this._lang = l; localStorage.setItem('bioinfo_lang', l); location.reload();
+    this._lang = l; localStorage.setItem('bioinfo_lang', l);
+    if (typeof I18N.applyAll === 'function') I18N.applyAll();
+    var page = (typeof App !== 'undefined') ? (App.currentPage || 'dashboard') : 'dashboard';
+    var fn = (typeof App !== 'undefined' && App.pages) ? App.pages[page] : null;
+    if (fn) document.getElementById('contentArea').innerHTML = fn();
+    document.getElementById('pageTitle').textContent = page;
   }};
 }
 

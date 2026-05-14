@@ -9,8 +9,18 @@ const I18N = {
   setLang(lang) {
     this._lang = lang;
     localStorage.setItem('bioinfo_lang', lang);
-    // Full page reload — cleanest way to apply language everywhere
-    location.reload();
+    // Force immediate DOM update without navigation/reload
+    I18N.applyAll();
+    // Re-render current page content
+    var page = App.currentPage || 'dashboard';
+    var fn = App.pages[page];
+    if (fn) {
+      document.getElementById('contentArea').innerHTML = fn();
+    }
+    document.getElementById('pageTitle').textContent = I18N.t('nav.' + page) || page;
+    // Sync dropdown
+    var tb = document.getElementById('topbarLang');
+    if (tb) tb.value = lang;
   },
 
   // Scan all [data-i18n] elements and update text
