@@ -10,7 +10,8 @@ const I18N = {
     this._lang = lang;
     localStorage.setItem('bioinfo_lang', lang);
     applyI18nAll();
-    // Re-render current page
+    // Force re-render even if same page
+    App.currentPage = null;
     const hash = window.location.hash || '#dashboard';
     App.navigate(hash.replace('#', ''));
   },

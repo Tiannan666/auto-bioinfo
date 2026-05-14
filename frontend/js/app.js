@@ -5,7 +5,7 @@ if (typeof I18N === 'undefined') {
   var I18N = { t: function(k) { return k; }, lang: 'en', applyAll: function(){}, setLang: function(l){
     this._lang = l; localStorage.setItem('bioinfo_lang', l); applyI18nAll();
     var hash = window.location.hash || '#dashboard';
-    if (typeof App !== 'undefined') App.navigate(hash.replace('#', ''));
+    if (typeof App !== 'undefined') { App.currentPage = null; App.navigate(hash.replace('#', '')); }
   }};
 }
 
