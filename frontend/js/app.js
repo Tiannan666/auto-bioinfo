@@ -1,5 +1,11 @@
 // SPA Router + App Initialization
 
+// Self-contained i18n apply function (does not depend on i18n.js being loaded)
+function applyI18nAll() {
+  if (typeof I18N === 'undefined' || typeof I18N.applyAll !== 'function') return;
+  I18N.applyAll();
+}
+
 // Show visible error if JS fails catastrophically
 var _jsLoaded = false;
 window.onerror = function(msg, src, line, col, err) {
@@ -7,7 +13,7 @@ window.onerror = function(msg, src, line, col, err) {
   if (el && !_jsLoaded) {
     el.innerHTML = '<div style="padding:40px;text-align:center;color:#DC2626;font-family:sans-serif"><h3>JavaScript Error</h3><p>' + String(msg).replace(/</g,'&lt;') + '</p><p style="font-size:12px;color:#6B7280">File: ' + (src||'?').split('/').pop() + ' line ' + line + '</p><p style="font-size:12px;margin-top:16px">Try restarting the app. If this persists, check that the installation is complete.</p></div>';
   }
-  return true; // still prevent Electron dialog
+  return true;
 };
 window.addEventListener('unhandledrejection', function(e) {
   console.error('[Unhandled Rejection]', e.reason);
@@ -63,7 +69,7 @@ function getPageTitle(name) {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   registerAllPages();
-  applyI18nAll();
+  if (typeof applyI18nAll === 'function') applyI18nAll();
 
   document.querySelectorAll('.sidebar-nav a[data-page]').forEach(a => {
     a.addEventListener('click', (e) => {

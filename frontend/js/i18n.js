@@ -43,9 +43,6 @@ const I18N = {
   }
 };
 
-// Global helper
-function applyI18nAll() { I18N.applyAll(); }
-
   t(key) {
     const val = DICT[key];
     if (!val) return key;
