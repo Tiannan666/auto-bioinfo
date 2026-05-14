@@ -9,11 +9,8 @@ const I18N = {
   setLang(lang) {
     this._lang = lang;
     localStorage.setItem('bioinfo_lang', lang);
-    applyI18nAll();
-    // Force re-render even if same page
-    App.currentPage = null;
-    const hash = window.location.hash || '#dashboard';
-    App.navigate(hash.replace('#', ''));
+    // Full page reload — cleanest way to apply language everywhere
+    location.reload();
   },
 
   // Scan all [data-i18n] elements and update text
