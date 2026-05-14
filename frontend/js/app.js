@@ -1,13 +1,20 @@
 // SPA Router + App Initialization
 
-// Suppress unhandled errors from showing Electron dialogs
+// Show visible error if JS fails catastrophically
+var _jsLoaded = false;
 window.onerror = function(msg, src, line, col, err) {
-  console.error('[App Error]', msg, src, line);
-  return true; // prevent default error dialog
+  var el = document.getElementById('contentArea');
+  if (el && !_jsLoaded) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:#DC2626;font-family:sans-serif"><h3>JavaScript Error</h3><p>' + String(msg).replace(/</g,'&lt;') + '</p><p style="font-size:12px;color:#6B7280">File: ' + (src||'?').split('/').pop() + ' line ' + line + '</p><p style="font-size:12px;margin-top:16px">Try restarting the app. If this persists, check that the installation is complete.</p></div>';
+  }
+  return true; // still prevent Electron dialog
 };
 window.addEventListener('unhandledrejection', function(e) {
-  console.error('[App Unhandled Rejection]', e.reason);
-  e.preventDefault();
+  console.error('[Unhandled Rejection]', e.reason);
+  var el = document.getElementById('contentArea');
+  if (el && !_jsLoaded) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:#DC2626"><h3>Startup Error</h3><p>' + String(e.reason).replace(/</g,'&lt;') + '</p></div>';
+  }
 });
 
 const App = {
@@ -74,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
   handleHash();
 
   checkConfig();
+  _jsLoaded = true;
 });
 
 function registerAllPages() {
