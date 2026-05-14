@@ -206,6 +206,7 @@ class EnrichmentRequest(BaseModel):
     go_bp: bool = True
     go_cc: bool = True
     go_mf: bool = True
+    msigdb: bool = False
     gsea_geneset: Optional[str] = None
 
 @app.post("/api/v2/analysis/differential")
@@ -262,7 +263,7 @@ async def v2_enrichment(req: EnrichmentRequest):
     try:
         result = run_enrichment(gene_list, pval_cutoff=req.pval_cutoff,
                                go_bp=req.go_bp, go_cc=req.go_cc, go_mf=req.go_mf,
-                               kegg=True)
+                               kegg=True, msigdb=req.msigdb)
         _state['enrich_result'] = result
         logger.log_step(_state.get('project_id', 'unknown'), "enrichment",
                        {"pval_cutoff": req.pval_cutoff, "n_genes": len(gene_list)},
