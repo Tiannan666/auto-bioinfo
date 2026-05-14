@@ -24,13 +24,38 @@
       "electron/**/*"
     ],
     "extraResources": [
-      { "from": "backend", "to": "backend" },
-      { "from": "backend_server.py", "to": "backend_server.py" },
-      { "from": "frontend", "to": "frontend" },
-      { "from": "runtime", "to": "runtime" }
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "backend_server.py",
+        "to": "."
+      },
+      {
+        "from": "frontend",
+        "to": "frontend",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "runtime.zip",
+        "to": "runtime.zip"
+      }
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "app_icon.ico"
     },
     "nsis": {
@@ -38,8 +63,14 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "unicode": true,
-      "installerLanguages": ["zh_CN", "en_US"],
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
       "shortcutName": "BEing Bio"
     }
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17"
   }
 }

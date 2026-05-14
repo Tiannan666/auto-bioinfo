@@ -3,6 +3,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const AdmZip = require('adm-zip');
 
 let mainWindow = null;
 let backendProcess = null;
@@ -19,20 +20,66 @@ function getProjectRoot() {
   return path.join(__dirname, '..');
 }
 
+function getRuntimePython() {
+  // Extracts runtime.zip to userData on first run, returns path to python.exe
+  const userData = app.getPath('userData');
+  // Extract to userData (zip already contains 'runtime/' prefix internally)
+  const extractDir = userData;
+  const runtimeDir = path.join(extractDir, 'runtime');
+  const pythonExe = path.join(runtimeDir, 'python', 'python.exe');
+
+  if (fs.existsSync(pythonExe)) {
+    console.log('[Main] Using existing runtime at', runtimeDir);
+    return pythonExe;
+  }
+
+  // Extract runtime.zip
+  const zipPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'runtime.zip')
+    : path.join(getProjectRoot(), 'runtime.zip');
+
+  if (!fs.existsSync(zipPath)) {
+    console.error('[Main] runtime.zip not found at', zipPath);
+    return null;
+  }
+
+  console.log('[Main] Extracting to', extractDir, '...');
+  const startTime = Date.now();
+  try {
+    fs.mkdirSync(extractDir, { recursive: true });
+    const zip = new AdmZip(zipPath);
+    zip.extractAllTo(extractDir, true);
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log('[Main] Runtime extracted in', elapsed, 's');
+  } catch (e) {
+    console.error('[Main] Extraction failed:', e.message);
+    return null;
+  }
+
+  if (fs.existsSync(pythonExe)) {
+    return pythonExe;
+  }
+  console.error('[Main] python.exe not found at', pythonExe);
+  return null;
+}
+
 function getBackendCommand() {
   let pythonExe, backendScript;
 
   if (app.isPackaged) {
-    pythonExe = path.join(process.resourcesPath, 'runtime', 'python', 'python.exe');
+    pythonExe = getRuntimePython();
     backendScript = path.join(process.resourcesPath, 'backend_server.py');
   } else {
     const root = getProjectRoot();
     pythonExe = path.join(root, 'runtime', 'python', 'python.exe');
     backendScript = path.join(root, 'backend_server.py');
-    // Fallback to system python for dev
     if (!fs.existsSync(pythonExe)) {
       pythonExe = 'python';
     }
+  }
+
+  if (!pythonExe) {
+    throw new Error('Python runtime not available. Please reinstall the application.');
   }
 
   console.log(`[Main] Python: ${pythonExe}`);

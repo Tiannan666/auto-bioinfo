@@ -11,6 +11,7 @@ build-pyinstaller/
 # Embedded Python runtime (too large, rebuild locally)
 runtime/
 python-embed.zip
+runtime.zip
 
 # Python
 __pycache__/
