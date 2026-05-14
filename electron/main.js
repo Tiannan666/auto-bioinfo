@@ -10,8 +10,8 @@ let backendProcess = null;
 
 const BACKEND_PORT = 8000;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
-const MAX_RETRIES = 30;
-const RETRY_INTERVAL = 1000;
+const MAX_RETRIES = 60;
+const RETRY_INTERVAL = 1500;
 
 function getProjectRoot() {
   if (app.isPackaged) {
@@ -197,7 +197,12 @@ app.whenReady().then(async () => {
     console.error(`[Main] ${err.message}`);
     dialog.showErrorBox(
       'Startup Failed',
-      'Could not connect to the analysis engine.\n\nError: ' + err.message
+      'The analysis engine could not start.\n\n' +
+      'Possible fixes:\n' +
+      '1. Close all BEing Bio windows and try again.\n' +
+      '2. Restart your computer if the problem persists.\n' +
+      '3. Check if another program is using port ' + BACKEND_PORT + '.\n\n' +
+      'Error: ' + err.message
     );
     app.quit();
   }
