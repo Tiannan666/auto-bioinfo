@@ -1,9 +1,13 @@
 // SPA Router + App Initialization
 
+// Fallback I18N if i18n.js fails to load (prevents cascading ReferenceErrors)
+if (typeof I18N === 'undefined') {
+  var I18N = { t: function(k) { return k; }, lang: 'en', applyAll: function(){} };
+}
+
 // Self-contained i18n apply function (does not depend on i18n.js being loaded)
 function applyI18nAll() {
-  if (typeof I18N === 'undefined' || typeof I18N.applyAll !== 'function') return;
-  I18N.applyAll();
+  if (typeof I18N !== 'undefined' && typeof I18N.applyAll === 'function') I18N.applyAll();
 }
 
 // Show visible error if JS fails catastrophically
@@ -35,7 +39,8 @@ const App = {
   navigate(name, data) {
     if (this.currentPage === name && !data) return;
     this.currentPage = name;
-    document.getElementById('pageTitle').textContent = I18N.t('nav.' + name) || getPageTitle(name);
+    var title = (typeof I18N !== 'undefined' && I18N.t('nav.' + name) !== 'nav.' + name) ? I18N.t('nav.' + name) : getPageTitle(name);
+    document.getElementById('pageTitle').textContent = title;
 
     // Update sidebar active
     document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
