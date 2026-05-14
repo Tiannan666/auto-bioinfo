@@ -19,6 +19,7 @@ function renderStoryline() {
 
 async function runStoryline() {
   const t = (k) => I18N.t(k);
+  if (!requireApiKey()) return;
   const params = { count: parseInt(document.getElementById('storyCount').value), language: document.getElementById('storyLang').value, project_id: window._loadedData?.project_id || 'current' };
   const btn = document.getElementById('btnRunStory'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Generating...';
   const el = document.getElementById('storyResult'); el.innerHTML = '<div class="card" style="text-align:center;margin-top:12px"><div class="spinner"></div><p style="margin-top:8px;color:var(--ab-text-secondary)">Analyzing pathways and building mechanistic hypotheses with DeepSeek AI...</p></div>';

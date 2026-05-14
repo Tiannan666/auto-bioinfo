@@ -1,4 +1,4 @@
-# BioInfo Platform
+# BEing Bio — Intelligent Platform
 
 An intelligent bioinformatics analysis desktop application. Go from raw data to publication-ready figures, AI interpretation, and report export — all in one click.
 

@@ -1,7 +1,7 @@
 {
   "name": "bioinfo-assistant",
   "version": "0.3.0",
-  "description": "BioInfo Platform - Intelligent Bioinformatics Analysis",
+  "description": "BEing Bio - Intelligent Platform",
   "author": "BioInfo Assistant",
   "license": "MIT",
   "main": "electron/main.js",
@@ -15,8 +15,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.bioinfo.assistant",
-    "productName": "BioInfo Platform",
+    "appId": "com.being.bio",
+    "productName": "BEing Bio",
     "directories": {
       "output": "dist-electron"
     },
@@ -31,7 +31,7 @@
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "icon": null
+      "icon": "app_icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -39,7 +39,7 @@
       "allowToChangeInstallationDirectory": true,
       "unicode": true,
       "installerLanguages": ["zh_CN", "en_US"],
-      "shortcutName": "BioInfo Platform"
+      "shortcutName": "BEing Bio"
     }
   }
 }

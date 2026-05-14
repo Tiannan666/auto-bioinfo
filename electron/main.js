@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
@@ -116,7 +116,7 @@ function createMainWindow() {
     height: 840,
     minWidth: 900,
     minHeight: 600,
-    title: 'BioInfo Platform',
+    title: 'BEing Bio',
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -130,9 +130,6 @@ function createMainWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    if (setupWindow && !setupWindow.isDestroyed()) {
-      setupWindow.close();
-    }
   });
 
   mainWindow.on('closed', () => {

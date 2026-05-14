@@ -54,46 +54,62 @@ const API = {
 };
 
 // Settings
-async function checkConfig() {
+let _cachedHasKey = false;
+
+window.checkConfig = async function() {
   try {
     const d = await API.configStatus();
+    _cachedHasKey = d.has_key;
     const el = document.getElementById('keyStatus');
     if (d.has_key) {
       el.innerHTML = '<span style="color:var(--ab-success)">●</span> API Ready';
     } else {
       el.innerHTML = '<span style="color:var(--ab-warning)">●</span> No API Key';
-      openSettings();
     }
   } catch (e) { /* ignore */ }
-}
+};
 
-function openSettings() {
-  document.getElementById('settingsModal').classList.add('open');
-  document.getElementById('apiKey').focus();
-  document.getElementById('saveStatus').style.display = 'none';
-  // Set language selector to current
-  document.getElementById('langSelect').value = I18N.lang;
-}
+window.requireApiKey = function() {
+  if (_cachedHasKey) return true;
+  if (window.openSettings) window.openSettings();
+  return false;
+};
 
-function switchLanguage(lang) {
+window.openSettings = function() {
+  var modal = document.getElementById('settingsModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  var keyInput = document.getElementById('apiKey');
+  if (keyInput) keyInput.focus();
+  var st = document.getElementById('saveStatus');
+  if (st) st.style.display = 'none';
+  var langSel = document.getElementById('langSelect');
+  if (langSel) langSel.value = I18N.lang;
+};
+
+window.switchLanguage = function(lang) {
   I18N.setLang(lang);
-}
+};
 
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('open');
-}
+window.closeSettings = function() {
+  var m = document.getElementById('settingsModal');
+  if (m) m.classList.remove('open');
+};
 
-async function saveSettings() {
+window.saveSettings = async function() {
   const key = document.getElementById('apiKey').value.trim();
   if (!key) return;
   const st = document.getElementById('saveStatus');
+  if (!st) return;
   st.style.display = 'block'; st.textContent = 'Saving...'; st.style.color = 'var(--ab-text-secondary)';
   try {
     await API.configSave(key);
+    _cachedHasKey = true;
     st.textContent = 'Saved!'; st.style.color = 'var(--ab-success)';
     document.getElementById('keyStatus').innerHTML = '<span style="color:var(--ab-success)">●</span> API Ready';
-    setTimeout(closeSettings, 800);
+    var m = document.getElementById('settingsModal');
+    setTimeout(function() { if (m) m.classList.remove('open'); }, 800);
   } catch (e) {
-    st.textContent = 'Failed: ' + e.message; st.style.color = 'var(--ab-error)';
+    st.textContent = 'Save failed: ' + e.message; st.style.color = 'var(--ab-error)';
   }
-}
+};

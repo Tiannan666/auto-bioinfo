@@ -1,5 +1,15 @@
 // SPA Router + App Initialization
 
+// Suppress unhandled errors from showing Electron dialogs
+window.onerror = function(msg, src, line, col, err) {
+  console.error('[App Error]', msg, src, line);
+  return true; // prevent default error dialog
+};
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('[App Unhandled Rejection]', e.reason);
+  e.preventDefault();
+});
+
 const App = {
   currentPage: 'dashboard',
 
@@ -46,7 +56,7 @@ function getPageTitle(name) {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   registerAllPages();
-  applyI18nSidebar();
+  applyI18nAll();
 
   document.querySelectorAll('.sidebar-nav a[data-page]').forEach(a => {
     a.addEventListener('click', (e) => {
@@ -65,23 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   checkConfig();
 });
-
-function applyI18nSidebar() {
-  const sections = document.querySelectorAll('.sidebar-nav .nav-section');
-  if (sections.length >= 1) sections[0].textContent = I18N.t('nav.analysis_workflow');
-  if (sections.length >= 2) sections[1].textContent = I18N.t('nav.intelligence');
-  if (sections.length >= 3) sections[2].textContent = I18N.t('nav.output');
-
-  document.querySelectorAll('.sidebar-nav a[data-page]').forEach(a => {
-    const page = a.dataset.page;
-    const iconEl = a.querySelector('.nav-icon');
-    const badgeEl = a.querySelector('.badge');
-    // Keep icon, update text
-    const textNode = Array.from(a.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
-    if (textNode) textNode.textContent = ' ' + (I18N.t('nav.' + page) || getPageTitle(page));
-    if (badgeEl) badgeEl.textContent = I18N.t('nav.coming_soon');
-  });
-}
 
 function registerAllPages() {
   App.register('dashboard', renderDashboard);

@@ -2,17 +2,49 @@
 // Chinese mode keeps all technical terms (RNA, DNA, PCR, GO, KEGG, etc.) in English.
 
 const I18N = {
-  _lang: localStorage.getItem('bioinfo_lang') || 'zh',
+  _lang: localStorage.getItem('bioinfo_lang') || 'en',
 
   get lang() { return this._lang; },
 
   setLang(lang) {
     this._lang = lang;
     localStorage.setItem('bioinfo_lang', lang);
-    // Reload current page to apply
+    applyI18nAll();
+    // Re-render current page
     const hash = window.location.hash || '#dashboard';
     App.navigate(hash.replace('#', ''));
   },
+
+  // Scan all [data-i18n] elements and update text
+  applyAll() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      const val = I18N.t(key);
+      if (val && val !== key) {
+        // For <select> options, update textContent only
+        if (el.tagName === 'OPTION') {
+          el.textContent = val;
+        } else if (el.children.length === 0) {
+          // Leaf element: just text
+          el.textContent = val;
+        } else {
+          // Element with children: update only the first text node
+          for (let node of el.childNodes) {
+            if (node.nodeType === 3 && node.textContent.trim()) {
+              node.textContent = ' ' + val + ' ';
+              break;
+            }
+          }
+        }
+      }
+    });
+    // Update page title
+    document.getElementById('pageTitle').textContent = I18N.t('nav.' + App.currentPage) || 'Dashboard';
+  }
+};
+
+// Global helper
+function applyI18nAll() { I18N.applyAll(); }
 
   t(key) {
     const val = DICT[key];
@@ -23,7 +55,7 @@ const I18N = {
 
 const DICT = {
   // App
-  'app.title': { zh: '生信分析平台', en: 'BioInfo Platform' },
+  'app.title': { zh: 'BEing Bio', en: 'BEing Bio' },
   'app.settings': { zh: '设置', en: 'Settings' },
   'app.api_ready': { zh: 'API 已配置', en: 'API Ready' },
   'app.no_api_key': { zh: '未配置 API Key', en: 'No API Key' },

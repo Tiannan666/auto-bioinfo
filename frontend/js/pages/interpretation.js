@@ -21,6 +21,7 @@ function renderInterpretation() {
 
 async function runInterpretation() {
   const t = (k) => I18N.t(k);
+  if (!requireApiKey()) return;
   const params = {
     focus: document.getElementById('interpFocus').value, language: document.getElementById('interpLang').value,
     project_id: window._loadedData?.project_id || 'current',

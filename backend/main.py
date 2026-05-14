@@ -31,7 +31,7 @@ from .modules.scrna_interface import scrna_status
 from .modules.task_logger import TaskLogger
 from .modules.file_manager import get_project_dir, ensure_dir
 
-app = FastAPI(title="BioInfo Platform", version="0.3.0")
+app = FastAPI(title="BEing Bio", version="0.3.0")
 
 app.add_middleware(
     CORSMiddleware,

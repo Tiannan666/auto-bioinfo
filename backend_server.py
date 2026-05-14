@@ -50,7 +50,7 @@ def main():
     if str(backend_dir) not in sys.path:
         sys.path.insert(0, str(backend_dir.parent))
 
-    print(f'BioInfo Platform Backend v0.3.0')
+    print(f'BEing Bio Backend v0.3.0')
     print(f'Data directory: {data_dir}')
     print(f'Starting server on {args.host}:{args.port}...')
 
