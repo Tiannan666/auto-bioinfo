@@ -96,9 +96,15 @@ document.addEventListener('DOMContentLoaded', () => {
   handleHash();
 
   checkConfig();
-  // Sync topbar language dropdown
+  // Sync topbar language dropdown + attach event
   var tb = document.getElementById('topbarLang');
   if (tb && typeof I18N !== 'undefined') tb.value = I18N.lang;
+  if (tb) {
+    tb.addEventListener('change', function() {
+      console.log('[Topbar] Language changed to', this.value);
+      if (typeof switchLanguage === 'function') switchLanguage(this.value);
+    });
+  }
   _jsLoaded = true;
 });
 
