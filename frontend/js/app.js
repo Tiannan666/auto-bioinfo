@@ -28,7 +28,7 @@ window.addEventListener('unhandledrejection', function(e) {
 });
 
 const App = {
-  currentPage: 'dashboard',
+  currentPage: null,
 
   pages: {},
 
