@@ -174,6 +174,8 @@ function createMainWindow() {
     show: false,
   });
 
+  // Clear any cached pages
+  mainWindow.webContents.session.clearCache();
   mainWindow.loadURL(BACKEND_URL);
 
   mainWindow.once('ready-to-show', () => {
