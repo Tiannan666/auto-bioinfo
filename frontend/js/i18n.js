@@ -1,14 +1,17 @@
 // i18n — Internationalization for BioInfo Platform
 // Chinese mode keeps all technical terms (RNA, DNA, PCR, GO, KEGG, etc.) in English.
 
+var _savedLang = 'en';
+try { _savedLang = localStorage.getItem('bioinfo_lang') || 'en'; } catch(e) {}
+
 const I18N = {
-  _lang: localStorage.getItem('bioinfo_lang') || 'en',
+  _lang: _savedLang,
 
   get lang() { return this._lang; },
 
   setLang(lang) {
     this._lang = lang;
-    localStorage.setItem('bioinfo_lang', lang);
+    try { localStorage.setItem('bioinfo_lang', lang); } catch(e) {}
     I18N.applyAll();
     // Re-render current page
     var hash = (window.location.hash || '#dashboard').replace('#', '');
