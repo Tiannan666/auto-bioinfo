@@ -25,7 +25,7 @@ function renderDataImport() {
         <div class="card-header"><h3>${t('data.next_steps')}</h3></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="loadAndProceed()">${t('data.load_continue')}</button>
-          <button class="btn btn-secondary" onclick="App.navigate('quality-control')">${t('data.skip_qc')}</button>
+          <button class="btn btn-secondary" onclick="window.location.hash = 'quality-control'">${t('data.skip_qc')}</button>
           <button class="btn btn-outline" onclick="resetImport()">${t('data.reset')}</button>
         </div>
       </div>
@@ -116,7 +116,7 @@ async function loadAndProceed() {
     var projects = JSON.parse(localStorage.getItem('bioinfo_projects') || '[]');
     projects.push({ path: path, timestamp: new Date().toISOString(), dataType: window._detectedData.data_type });
     localStorage.setItem('bioinfo_projects', JSON.stringify(projects));
-    App.navigate('quality-control');
+    window.location.hash = 'quality-control';
   } catch (e) { alert('Load failed: ' + e.message); }
 }
 

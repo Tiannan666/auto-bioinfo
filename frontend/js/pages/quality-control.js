@@ -7,15 +7,15 @@ function renderQualityControl() {
       <div class="card-header"><h3>${t('qc.title')}</h3></div>
       <p style="font-size:13px;color:var(--ab-text-secondary);margin-bottom:12px">${t('qc.desc2')}</p>
       <button class="btn btn-primary" id="btnRunQC" onclick="runQC()">${t('qc.run_btn')}</button>
-      <button class="btn btn-secondary" style="margin-left:8px" onclick="App.navigate('data-import')">${t('qc.back')}</button>
+      <button class="btn btn-secondary" style="margin-left:8px" onclick="window.location.hash = 'data-import'">${t('qc.back')}</button>
     </div>
     <div id="qcResult" style="display:none"></div>
     <div id="qcActions" style="display:none;margin-top:16px">
       <div class="card">
         <div class="card-header"><h3>${t('data.next_steps')}</h3></div>
         <div style="display:flex;gap:10px">
-          <button class="btn btn-primary" onclick="App.navigate('differential')">${t('qc.proceed_diff')}</button>
-          <button class="btn btn-secondary" onclick="App.navigate('data-import')">${t('qc.reimport')}</button>
+          <button class="btn btn-primary" onclick="window.location.hash = 'differential'">${t('qc.proceed_diff')}</button>
+          <button class="btn btn-secondary" onclick="window.location.hash = 'data-import'">${t('qc.reimport')}</button>
         </div>
       </div>
     </div>

@@ -9,18 +9,14 @@ const I18N = {
   setLang(lang) {
     this._lang = lang;
     localStorage.setItem('bioinfo_lang', lang);
-    // Force immediate DOM update without navigation/reload
     I18N.applyAll();
-    // Re-render current page content
-    var page = App.currentPage || 'dashboard';
-    var fn = App.pages[page];
-    if (fn) {
-      document.getElementById('contentArea').innerHTML = fn();
+    // Re-render current page
+    var hash = (window.location.hash || '#dashboard').replace('#', '');
+    if (!hash) hash = 'dashboard';
+    if (typeof _pages !== 'undefined' && _pages[hash]) {
+      document.getElementById('contentArea').innerHTML = _pages[hash]();
     }
-    document.getElementById('pageTitle').textContent = I18N.t('nav.' + page) || page;
-    // Sync dropdown
-    var tb = document.getElementById('topbarLang');
-    if (tb) tb.value = lang;
+    document.getElementById('pageTitle').textContent = I18N.t('nav.' + hash) || hash;
   },
 
   // Scan all [data-i18n] elements and update text

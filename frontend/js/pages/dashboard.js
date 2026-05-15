@@ -9,7 +9,7 @@ function renderDashboard() {
       <div class="card-header"><h3>${t('dashboard.workflow')}</h3></div>
       <div class="steps" id="workflowSteps">
         ${steps.map((s,i) => `
-          <div class="step" onclick="App.navigate('${stepPages[i]}')" style="cursor:pointer">
+          <div class="step" onclick="window.location.hash = '${stepPages[i]}'" style="cursor:pointer">
             <span class="step-num">${i+1}</span>${t('step.'+s)}
           </div>
         `).join('')}
@@ -25,7 +25,7 @@ function renderDashboard() {
       <div class="card">
         <div class="card-header"><h3>${t('dashboard.quick_start')}</h3></div>
         <p style="font-size:13px;color:var(--ab-text-secondary);margin-bottom:14px">${t('dashboard.quick_start_desc')}</p>
-        <button class="btn btn-primary" onclick="App.navigate('data-import')">${t('dashboard.start_analysis')}</button>
+        <button class="btn btn-primary" onclick="window.location.hash = 'data-import'">${t('dashboard.start_analysis')}</button>
       </div>
       <div class="card">
         <div class="card-header"><h3>${t('dashboard.supported_types')}</h3></div>

@@ -25,8 +25,8 @@ function renderDifferential() {
         <div id="diffResult" class="card"><p style="color:var(--ab-text-secondary);font-size:13px;text-align:center;padding:40px 0">${t('diff.placeholder')}</p></div>
         <div id="diffTables" style="display:none"></div>
         <div id="diffActions" style="display:none;margin-top:12px;display:flex;gap:8px">
-          <button class="btn btn-primary" onclick="App.navigate('enrichment')">${t('diff.proceed_enrich')}</button>
-          <button class="btn btn-secondary" onclick="App.navigate('visualization')">${t('diff.generate_fig')}</button>
+          <button class="btn btn-primary" onclick="window.location.hash = 'enrichment'">${t('diff.proceed_enrich')}</button>
+          <button class="btn btn-secondary" onclick="window.location.hash = 'visualization'">${t('diff.generate_fig')}</button>
           <button class="btn btn-outline" onclick="exportDiffCSV()">${t('diff.export_csv')}</button>
         </div>
       </div>
