@@ -46,7 +46,9 @@ const I18N = {
       }
     });
     // Update page title
-    document.getElementById('pageTitle').textContent = I18N.t('nav.' + App.currentPage) || 'Dashboard';
+    var hash = (window.location.hash || '#dashboard').replace('#', '');
+    if (!hash) hash = 'dashboard';
+    document.getElementById('pageTitle').textContent = I18N.t('nav.' + hash) || 'Dashboard';
   },
 
   t(key) {
