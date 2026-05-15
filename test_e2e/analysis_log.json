@@ -1,0 +1,46 @@
+{
+  "sessions": [
+    {
+      "id": "20260515_143742",
+      "name": "Analysis_oral_expression",
+      "started": "2026-05-15T14:37:42.354207",
+      "steps": [
+        {
+          "name": "data_load",
+          "timestamp": "2026-05-15T14:37:42.357756",
+          "parameters": {
+            "path": "D:/claude/oral_expression.csv"
+          },
+          "result_summary": {}
+        },
+        {
+          "name": "differential",
+          "timestamp": "2026-05-15T14:37:42.745912",
+          "parameters": {
+            "method": "deseq2",
+            "logfc": 1.0,
+            "fdr": 0.05
+          },
+          "result_summary": {
+            "n_up": 0,
+            "n_down": 0
+          }
+        },
+        {
+          "name": "differential",
+          "timestamp": "2026-05-15T14:38:08.167954",
+          "parameters": {
+            "method": "deseq2",
+            "logfc": 0.3,
+            "fdr": 0.1
+          },
+          "result_summary": {
+            "n_up": 0,
+            "n_down": 0
+          }
+        }
+      ],
+      "parameters": {}
+    }
+  ]
+}
