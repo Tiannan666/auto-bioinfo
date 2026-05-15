@@ -174,7 +174,11 @@ function createMainWindow() {
     show: false,
   });
 
-  mainWindow.loadURL(BACKEND_URL);
+  // Load frontend from filesystem (instant, no network round-trip)
+  const frontendPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'frontend', 'index.html')
+    : path.join(__dirname, '..', 'frontend', 'index.html');
+  mainWindow.loadFile(frontendPath);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
