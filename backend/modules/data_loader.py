@@ -32,7 +32,7 @@ def load_file(path: str) -> pd.DataFrame:
         elif suffix in ('.tsv', '.txt', '.tab'):
             return pd.read_csv(path, sep='\t', index_col=None)
         elif suffix in ('.xlsx', '.xls'):
-            return pd.read_excel(path, index_col=None)
+            return pd.read_excel(path, index_col=None, engine='openpyxl')
         elif suffix in ('.soft',):
             return _parse_soft(str(path))
         elif suffix in ('.xml', '.miniml'):
