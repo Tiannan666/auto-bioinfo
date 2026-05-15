@@ -1,220 +1,260 @@
-"""
-Real gene set databases: GO (gene2go), KEGG, MSigDB Hallmark.
-Replaces the hardcoded demo gene sets with actual published databases.
-"""
 
-import os
-import gzip
-import json
-import urllib.request
+"""Real gene set databases: downloads GO, KEGG, MSigDB from public sources."""
+
+import os, gzip, json, time, urllib.request
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set
 
 DB_DIR = Path(__file__).parent.parent / "gene_db"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
-# Cached gene sets
-_go_sets: Dict[str, Dict[str, List[str]]] = {}
-_kegg_sets: Dict[str, List[str]] = {}
-_msigdb_sets: Dict[str, List[str]] = {}
-_symbol_to_entrez: Dict[str, str] = {}
-_entrez_to_symbol: Dict[str, str] = {}
-_is_loaded = False
+_go_sets = {}       # GO_ID -> {term, category, genes}
+_kegg_sets = {}     # pathway_name -> [genes]
+_msigdb_sets = {}   # gene_set_name -> [genes]
+_symbol_entrez = {} # symbol -> entrez
+_loaded = False
 
 
-def load_all():
-    """Load all gene set databases. Cached after first call."""
-    global _is_loaded, _go_sets, _kegg_sets, _msigdb_sets
-    if _is_loaded:
+def load_all(force_refresh: bool = False):
+    global _loaded
+    if _loaded and not force_refresh:
         return
-    _load_go_sets()
+    _load_go(force_refresh)
     _load_msigdb()
-    _load_kegg_sets()
-    _is_loaded = True
+    _load_kegg(force_refresh)
+    _loaded = True
 
 
-def _load_go_sets():
-    """Load GO gene sets. Uses MSigDB Hallmark + built-in GO as baseline."""
-    # Full NCBI gene2go is 650MB — too large for embedded packaging.
-    # Use built-in curated GO sets + MSigDB Hallmark which covers ~50 major pathways.
-    # Full GO database (~30K terms) available as future extension.
-    _build_fallback_go()
+def _download(url: str) -> bytes:
+    req = urllib.request.Request(url, headers={'User-Agent': 'BEingBio/1.0'})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.read()
+
+
+def _download_gz(url: str) -> str:
+    data = _download(url)
+    return gzip.decompress(data).decode('utf-8', errors='replace')
+
+
+def _parse_go_obo(text: str) -> Dict[str, Dict]:
+    """Parse GO .obo file -> {GO_ID: {name, namespace, is_obsolete}}"""
+    terms = {}
+    current = None
+    for line in text.split('\n'):
+        line = line.strip()
+        if line == '[Term]':
+            current = {}
+        elif line == '[Typedef]':
+            current = None
+        elif current is not None and ': ' in line:
+            k, v = line.split(': ', 1)
+            if k == 'id':
+                current['id'] = v
+            elif k == 'name':
+                current['name'] = v
+            elif k == 'namespace':
+                current['namespace'] = v
+            elif k == 'is_obsolete' and v == 'true':
+                current['obsolete'] = True
+            if 'id' in current and 'name' in current and 'namespace' in current:
+                terms[current['id']] = current
+                current = None
+    return terms
+
+
+def _parse_goa_gaf(text: str) -> Dict[str, Set[str]]:
+    """Parse GOA human GAF -> {GO_ID: {gene_symbols}}"""
+    go_genes = {}
+    for line in text.split('\n'):
+        if line.startswith('!'):
+            continue
+        cols = line.split('\t')
+        if len(cols) < 5:
+            continue
+        # GAF 2.0: DB, DB_Object_ID, DB_Object_Symbol, Qualifier, GO_ID, ...
+        if len(cols) >= 5:
+            go_id = cols[4]
+            gene_symbol = cols[2] if len(cols) > 2 else ''
+            qualifier = cols[3] if len(cols) > 3 else ''
+            if not go_id.startswith('GO:') or not gene_symbol:
+                continue
+            if 'NOT' in qualifier:
+                continue
+            if go_id not in go_genes:
+                go_genes[go_id] = set()
+            go_genes[go_id].add(gene_symbol.upper())
+    return go_genes
+
+
+def _load_go(force_refresh: bool):
+    global _go_sets, _symbol_entrez
+
+    # Try cached first
+    cache = DB_DIR / "go_sets.json"
+    if cache.exists() and not force_refresh:
+        try:
+            import json as j
+            _go_sets = j.loads(cache.read_text())
+            return
+        except: pass
+
+    cat_map = {
+        'biological_process': 'BP',
+        'cellular_component': 'CC',
+        'molecular_function': 'MF',
+    }
+
+    try:
+        print("[GeneDB] Downloading GO ontology...")
+        obo_text = _download('http://purl.obolibrary.org/obo/go/go-basic.obo').decode('utf-8', errors='replace')
+        terms = _parse_go_obo(obo_text)
+        print(f"[GeneDB] GO terms: {len(terms)}")
+
+        print("[GeneDB] Downloading GOA human annotations...")
+        gaf_text = _download_gz('ftp://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz')
+        go_genes = _parse_goa_gaf(gaf_text)
+        print(f"[GeneDB] GO annotations: {len(go_genes)} terms with genes")
+
+        # Build category-specific gene sets
+        _go_sets = {'BP': {}, 'CC': {}, 'MF': {}}
+        for go_id, genes in go_genes.items():
+            if go_id not in terms or terms[go_id].get('obsolete'):
+                continue
+            cat = cat_map.get(terms[go_id].get('namespace', ''), 'BP')
+            name = terms[go_id]['name']
+            key = f"{go_id} {name}"
+            _go_sets[cat][key] = sorted(genes)
+
+        total = sum(len(v) for v in _go_sets.values())
+        print(f"[GeneDB] Built GO: {total} terms (BP:{len(_go_sets['BP'])} CC:{len(_go_sets['CC'])} MF:{len(_go_sets['MF'])})")
+        import json as j
+        cache.write_text(j.dumps(_go_sets))
+
+    except Exception as e:
+        print(f"[GeneDB] GO download failed: {e}")
+        _build_fallback_go()
+
+
+def _load_kegg(force_refresh: bool):
+    global _kegg_sets
+    cache = DB_DIR / "kegg_sets.json"
+    if cache.exists() and not force_refresh:
+        try:
+            _kegg_sets = json.loads(cache.read_text())
+            return
+        except: pass
+
+    try:
+        print("[GeneDB] Fetching KEGG pathways...")
+        pathways_text = _download('https://rest.kegg.jp/list/pathway/hsa').decode('utf-8')
+        pathways = {}
+        for line in pathways_text.strip().split('\n'):
+            if '\t' not in line: continue
+            pid, name = line.split('\t', 1)
+            pid = pid.replace('path:', '')
+            pathways[pid] = f"{pid} {name}"
+
+        for pid, name in list(pathways.items())[:350]:
+            try:
+                genes_text = _download(f'https://rest.kegg.jp/link/genes/{pid}').decode('utf-8')
+                genes = []
+                for gline in genes_text.strip().split('\n'):
+                    if '\t' in gline:
+                        gid = gline.split('\t')[1].replace('hsa:', '')
+                        # Convert Entrez to symbol if we have it
+                        genes.append(_entrez_to_symbol.get(gid, gid))
+                if genes:
+                    _kegg_sets[name] = genes
+            except:
+                continue
+            if len(_kegg_sets) % 30 == 0:
+                time.sleep(0.3)  # Rate limit
+
+        print(f"[GeneDB] KEGG: {len(_kegg_sets)} pathways")
+        cache.write_text(json.dumps(_kegg_sets))
+    except Exception as e:
+        print(f"[GeneDB] KEGG failed: {e}")
+
+
+def _load_msigdb():
+    global _msigdb_sets
+    p = DB_DIR / "msigdb_hallmark.json"
+    if p.exists():
+        try:
+            data = json.loads(p.read_text())
+            for entry in data:
+                name = entry.get('name', '')
+                gs = entry.get('geneSymbols', [])
+                if name and gs:
+                    _msigdb_sets[name] = gs
+            return
+        except: pass
+
+    # Download from Broad
+    try:
+        print("[GeneDB] Downloading MSigDB Hallmark...")
+        url = "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2024.1.Hs/h.all.v2024.1.Hs.json"
+        data = _download(url).decode('utf-8')
+        p.write_text(data)
+        data = json.loads(data)
+        for entry in data:
+            name = entry.get('name', '')
+            gs = entry.get('geneSymbols', [])
+            if name and gs:
+                _msigdb_sets[name] = gs
+        print(f"[GeneDB] MSigDB Hallmark: {len(_msigdb_sets)} sets")
+    except Exception as e:
+        print(f"[GeneDB] MSigDB failed: {e}")
 
 
 def _build_fallback_go():
-    """Build a minimal fallback GO set if NCBI download failed."""
     global _go_sets
-    # Built-in minimal GO sets for fallback
     _go_sets = {
         'BP': {
             'GO:0002376 immune system process': ['CD4','CD8A','IL2','IL6','TNF','IFNG','IL1B','TLR4','NFKB1','STAT3'],
             'GO:0006954 inflammatory response': ['TNF','IL1B','IL6','CXCL8','CCL2','TLR4','NFKB1','PTGS2','NOS2','IL10'],
-            'GO:0006979 response to oxidative stress': ['SOD1','SOD2','CAT','GPX1','GPX4','NFE2L2','HMOX1','NQO1','TXN','TXNRD1'],
-            'GO:0006915 apoptotic process': ['BCL2','BAX','CASP3','CASP8','CASP9','TP53','FAS','CYCS','APAF1','BAD'],
-            'GO:0006096 glycolytic process': ['HK2','GPI','PFKL','ALDOA','GAPDH','PGK1','ENO1','PKM','LDHA','SLC2A1'],
-            'GO:0006119 oxidative phosphorylation': ['NDUFA1','SDHA','UQCRC1','COX4I1','ATP5A1','NDUFS1','SDHB','COX5A','ATP5B'],
-            'GO:0045087 innate immune response': ['TLR2','TLR3','TLR4','MYD88','IRF3','IRF7','IFNB1','NLRP3','CGAS','STING'],
-            'GO:0008283 cell proliferation': ['MYC','CCND1','CDK4','EGFR','PCNA','MKI67','E2F1','RB1','CDKN1A','JUN'],
-            'GO:0007155 cell adhesion': ['CDH1','CDH2','ITGB1','ITGA5','ICAM1','VCAM1','CD44','CTNNB1','CLDN1','TJP1'],
-            'GO:0006629 lipid metabolic process': ['PPARG','SREBF1','FASN','ACACA','CD36','LPL','LDLR','HMGCR','CPT1A','SCD'],
-            'GO:1901700 response to oxygen-containing compound': ['HIF1A','VEGFA','EPO','LDHA','PDK1','BNIP3','CA9','ADM','FLT1','KDR'],
         },
         'CC': {
-            'GO:0005739 mitochondrion': ['SOD2','CYCS','SDHA','COX4I1','ATP5A1','HSPD1','MFN1','MFN2','OPA1','PINK1'],
-            'GO:0005634 nucleus': ['TP53','MYC','FOS','JUN','RELA','NFKB1','STAT3','HIF1A','PPARG','ESR1'],
-            'GO:0005886 plasma membrane': ['EGFR','TLR4','CD4','ITGB1','ICAM1','VCAM1','FAS','CD44','SLC2A1','SLC7A11'],
+            'GO:0005739 mitochondrion': ['SOD2','CYCS','SDHA','COX4I1','ATP5A1','MFN1','MFN2','OPA1','PINK1'],
         },
         'MF': {
-            'GO:0005515 protein binding': ['TP53','MYC','HSP90AA1','ACTB','GAPDH','YWHAZ','UBC','PIN1','PPIA','PRKACA'],
-            'GO:0016491 oxidoreductase activity': ['SOD1','SOD2','CAT','GPX1','PRDX1','TXN','TXNRD1','NQO1','HMOX1','IDH1'],
-            'GO:0003700 DNA-binding transcription factor activity': ['TP53','MYC','FOS','JUN','RELA','NFKB1','STAT3','HIF1A','CREB1','CTCF'],
+            'GO:0005515 protein binding': ['TP53','MYC','HSP90AA1','ACTB','GAPDH','YWHAZ','PIN1'],
         },
     }
-    print(f"[GeneDB] Using built-in GO fallback ({sum(len(v) for v in _go_sets.values())} terms)")
 
 
-def _load_msigdb():
-    """Load MSigDB Hallmark gene sets from JSON."""
-    json_path = DB_DIR / "msigdb_hallmark.json"
-    if not json_path.exists():
-        print("[GeneDB] MSigDB Hallmark file not found")
-        return
-
-    try:
-        data = json.loads(json_path.read_text(encoding='utf-8'))
-        global _msigdb_sets
-        for entry in data:
-            name = entry.get('name', '')
-            gene_symbols = entry.get('geneSymbols', [])
-            if name and gene_symbols:
-                _msigdb_sets[name] = gene_symbols
-        print(f"[GeneDB] Loaded MSigDB Hallmark: {len(_msigdb_sets)} gene sets")
-    except Exception as e:
-        print(f"[GeneDB] Failed to load MSigDB: {e}")
+# Store gene symbol→entrez mappings from GO annotations
+_entrez_to_symbol = {}
+_symbol_to_entrez = {}
 
 
-def _load_kegg_sets():
-    """Load KEGG pathway gene sets via REST API or local cache."""
-    global _kegg_sets
-    cache_path = DB_DIR / "kegg_pathways.json"
-    if cache_path.exists():
-        try:
-            cached = json.loads(cache_path.read_text(encoding='utf-8'))
-            for pathway, entrez_ids in cached.items():
-                symbols = [_entrez_to_symbol.get(e, e) for e in entrez_ids]
-                _kegg_sets[pathway] = symbols
-            print(f"[GeneDB] Loaded KEGG from cache: {len(_kegg_sets)} pathways")
-            return
-        except Exception:
-            pass
-
-    try:
-        _fetch_kegg_pathways(cache_path)
-    except Exception as e:
-        print(f"[GeneDB] Failed to fetch KEGG: {e}")
-        _kegg_sets = {}
-        print("[GeneDB] KEGG unavailable, will use GO + MSigDB")
-
-
-def _fetch_kegg_pathways(cache_path: Path):
-    """Fetch KEGG pathway gene lists from REST API."""
-    global _kegg_sets
-    _kegg_sets = {}
-
-    # Get human pathway list
-    base = "https://rest.kegg.jp"
-    list_url = f"{base}/list/pathway/hsa"
-    req = urllib.request.Request(list_url, headers={"User-Agent": "BEingBio/1.0"})
-
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        pathway_list = resp.read().decode('utf-8').strip().split('\n')
-
-    pathways = {}
-    for line in pathway_list[:350]:  # Limit to ~350 human pathways
-        parts = line.split('\t')
-        if len(parts) >= 2:
-            pid = parts[0].replace('path:', '')
-            name = parts[1]
-            pathways[pid] = f"{pid} {name}"
-
-    # Fetch genes for each pathway (batch to avoid rate limits)
-    for i, (pid, full_name) in enumerate(pathways.items()):
-        try:
-            url = f"{base}/link/genes/{pid}"
-            req = urllib.request.Request(url, headers={"User-Agent": "BEingBio/1.0"})
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                genes_text = resp.read().decode('utf-8').strip()
-                gene_ids = []
-                for g_line in genes_text.split('\n'):
-                    if '\t' in g_line:
-                        gid = g_line.split('\t')[1].replace('hsa:', '')
-                        gene_ids.append(_entrez_to_symbol.get(gid, gid))
-                if gene_ids:
-                    _kegg_sets[full_name] = gene_ids
-        except Exception:
-            continue
-
-        # Rate limit: ~3 requests/second max
-        if i % 3 == 0:
-            import time
-            time.sleep(0.4)
-
-    # Cache to local file
-    if _kegg_sets:
-        with open(cache_path, 'w', encoding='utf-8') as f:
-            json.dump(_kegg_sets, f, ensure_ascii=False)
-        print(f"[GeneDB] Fetched and cached {len(_kegg_sets)} KEGG pathways")
-    else:
-        print("[GeneDB] KEGG fetch returned 0 pathways")
-
-
-# ========== Public API ==========
-
-def get_go_sets(categories: List[str] = None) -> Dict[str, List[str]]:
-    """Get GO gene sets. categories: ['BP','CC','MF'], None for all."""
+def get_go_sets(categories=None):
     load_all()
-    result = {}
-    cats = categories or ['BP', 'CC', 'MF']
-    for cat in cats:
-        if cat in _go_sets:
-            result.update(_go_sets[cat])
-    return result
+    cats = categories or ['BP','CC','MF']
+    r = {}
+    for c in cats:
+        if c in _go_sets:
+            r.update(_go_sets[c])
+    return r
 
 
-def get_kegg_sets() -> Dict[str, List[str]]:
-    """Get KEGG pathway gene sets."""
+def get_kegg_sets():
     load_all()
     return dict(_kegg_sets)
 
 
-def get_msigdb_sets() -> Dict[str, List[str]]:
-    """Get MSigDB Hallmark gene sets."""
+def get_msigdb_sets():
     load_all()
     return dict(_msigdb_sets)
 
 
-def get_all_gene_sets() -> Dict[str, List[str]]:
-    """Get all available gene sets combined."""
-    all_sets = {}
-    all_sets.update(get_go_sets())
-    all_sets.update(get_kegg_sets())
-    all_sets.update(get_msigdb_sets())
-    return all_sets
+def get_all_gene_sets():
+    r = {}
+    r.update(get_go_sets())
+    r.update(get_kegg_sets())
+    r.update(get_msigdb_sets())
+    return r
 
 
-def gene_symbol_to_entrez(symbol: str) -> str:
-    """Convert gene symbol to Entrez ID."""
-    load_all()
-    return _symbol_to_entrez.get(symbol.upper(), symbol)
-
-
-def gene_entrez_to_symbol(entrez: str) -> str:
-    """Convert Entrez ID to gene symbol."""
-    load_all()
-    return _entrez_to_symbol.get(entrez, entrez)
-
-
-def get_background_size() -> int:
-    """Return estimated background gene count for enrichment."""
-    load_all()
-    return len(_symbol_to_entrez) or 20000
+def get_background_size():
+    return 20000
