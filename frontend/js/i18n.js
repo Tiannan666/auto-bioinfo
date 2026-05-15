@@ -48,8 +48,7 @@ const I18N = {
     });
     // Update page title
     document.getElementById('pageTitle').textContent = I18N.t('nav.' + App.currentPage) || 'Dashboard';
-  }
-};
+  },
 
   t(key) {
     const val = DICT[key];
