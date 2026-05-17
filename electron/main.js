@@ -15,25 +15,31 @@ const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 const MAX_RETRIES = 60;
 const RETRY_INTERVAL = 1500;
 const R_VERSION = '4.6.0';
-const R_INSTALLER = `R-${R_VERSION}-win.exe`;
+const R_ZIP = `R-${R_VERSION}-win.zip`;
 const R_MIRRORS = [
-  `https://mirrors.tuna.tsinghua.edu.cn/CRAN/bin/windows/base/old/${R_VERSION}/${R_INSTALLER}`,
-  `https://cloud.r-project.org/bin/windows/base/old/${R_VERSION}/${R_INSTALLER}`,
+  `https://mirrors.tuna.tsinghua.edu.cn/CRAN/bin/windows/base/old/${R_VERSION}/${R_ZIP}`,
+  `https://cloud.r-project.org/bin/windows/base/old/${R_VERSION}/${R_ZIP}`,
 ];
 const BIOC_PACKAGES = ['DESeq2','edgeR','limma','clusterProfiler','fgsea','ggplot2','org.Hs.eg.db','org.Mm.eg.db','org.Rn.eg.db','enrichplot'];
 
 // ====== R Detection ======
 
 function findR() {
-  const bases = [path.join(process.env['ProgramFiles'] || 'C:/Program Files', 'R'), 'C:/Program Files/R'];
+  const bases = [
+    path.join(app.getPath('userData'), 'runtime', 'R'),
+    path.join(process.env['ProgramFiles'] || 'C:/Program Files', 'R'),
+    'C:/Program Files/R',
+  ];
   for (const base of bases) {
     if (!fs.existsSync(base)) continue;
+    // Direct bin/Rscript.exe (ZIP extraction style)
+    const direct = path.join(base, 'bin', 'Rscript.exe');
+    if (fs.existsSync(direct)) return { home: base, rscript: direct };
+    // R-4.6.0 style subdirectory
     const dirs = fs.readdirSync(base).filter(d => d.startsWith('R-')).sort().reverse();
     for (const d of dirs) {
       const rscript = path.join(base, d, 'bin', 'Rscript.exe');
-      if (fs.existsSync(rscript)) {
-        return { home: path.join(base, d), rscript: rscript };
-      }
+      if (fs.existsSync(rscript)) return { home: path.join(base, d), rscript: rscript };
     }
   }
   return null;
@@ -116,29 +122,33 @@ async function setupR() {
 
   const r = findR();
   if (!r) {
-    // Download and install R
-    const downloadPath = path.join(app.getPath('temp'), R_INSTALLER);
+    // Download R ZIP (no admin needed, just extract like Python runtime)
+    const downloadPath = path.join(app.getPath('temp'), R_ZIP);
+    const rExtractDir = path.join(app.getPath('userData'), 'runtime', 'R');
 
     if (setupWindow && !setupWindow.isDestroyed()) {
-      setupWindow.webContents.send('r-progress', { msg: 'Downloading R (87MB)...', pct: 10 });
+      setupWindow.webContents.send('r-progress', { msg: 'Downloading R (80MB)...', pct: 10 });
     }
 
     await downloadFile(R_MIRRORS, downloadPath);
     console.log('[Main] R downloaded');
 
     if (setupWindow && !setupWindow.isDestroyed()) {
-      setupWindow.webContents.send('r-progress', { msg: 'Installing R silently...', pct: 30 });
+      setupWindow.webContents.send('r-progress', { msg: 'Extracting R...', pct: 30 });
     }
 
     try {
-      execSync(`"${downloadPath}" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`, { timeout: 120000 });
-    } catch (e) { /* returns non-zero but usually succeeds */ }
-
-    // Wait for R to appear
-    for (let i = 0; i < 30; i++) {
-      if (findR()) break;
-      await sleep(2000);
+      fs.mkdirSync(rExtractDir, { recursive: true });
+      const zip = new AdmZip(downloadPath);
+      zip.extractAllTo(rExtractDir, true);
+      console.log('[Main] R extracted');
+    } catch (e) {
+      console.error('[Main] R extraction failed:', e.message);
+      return false;
     }
+
+    // Clean up zip
+    try { fs.unlinkSync(downloadPath); } catch(e) {}
   }
 
   // Install Bioconductor packages
