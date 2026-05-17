@@ -298,10 +298,20 @@ ipcMain.on('r-setup-start', async () => {
 // ====== App Lifecycle ======
 
 app.whenReady().then(async () => {
+  // Start backend first (Python doesn't depend on R)
   startBackend();
 
-  if (!rBiocReady()) {
+  // Check R in background — show setup window if needed
+  const rReady = rBiocReady();
+  if (!rReady) {
     createRSetupWindow();
+    // Start R setup in background, don't block
+    setupR().then(ok => {
+      console.log('[Main] R setup result:', ok);
+      if (setupWindow && !setupWindow.isDestroyed()) {
+        setupWindow.webContents.send('r-progress', { msg: ok ? 'R ready! Restart to use full analysis.' : 'R setup incomplete. Basic analysis only.', pct: ok ? 100 : 30, done: true });
+      }
+    });
   }
 
   try {

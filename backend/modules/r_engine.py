@@ -1,33 +1,38 @@
-"""R engine via subprocess (Rscript). Assumes R + Bioconductor are installed."""
+"""R engine via subprocess (Rscript). Lazy-init, no crash at import."""
 
 import os, sys, tempfile, subprocess
 from pathlib import Path
 
-def find_rscript():
+_rscript = None
+
+def _find():
     bases = [os.environ.get('R_HOME', ''), 'C:/Program Files/R']
     for base in bases:
         if not base: continue
         for d in sorted(Path(base).glob('R-*'), reverse=True):
             exe = d / 'bin' / 'Rscript.exe'
             if exe.exists(): return str(exe)
-    # Check PATH
     for d in os.environ.get('PATH','').split(os.pathsep):
         exe = Path(d) / 'Rscript.exe'
         if exe.exists(): return str(exe)
-    raise RuntimeError('R not found. Install R first.')
+    return None
 
-_rscript = None
-
-def rscript():
+def r_available():
     global _rscript
-    if _rscript is None: _rscript = find_rscript()
-    return _rscript
+    if _rscript is None:
+        _rscript = _find()
+    return _rscript is not None
 
 def run_r(code, timeout=300):
+    global _rscript
+    if _rscript is None:
+        _rscript = _find()
+    if not _rscript:
+        raise RuntimeError('R not found. Please install R first.')
     tf = tempfile.NamedTemporaryFile(mode='w', suffix='.R', delete=False, encoding='utf-8')
     tf.write(code); tf.close()
     try:
-        r = subprocess.run([rscript(), '--no-save', '--no-restore', tf.name],
+        r = subprocess.run([_rscript, '--no-save', '--no-restore', tf.name],
                           capture_output=True, text=True, timeout=timeout)
         if r.returncode != 0:
             raise RuntimeError(r.stderr[:500] or 'R error')
@@ -35,5 +40,3 @@ def run_r(code, timeout=300):
     finally:
         try: os.unlink(tf.name)
         except: pass
-
-print(f'[R Engine] Rscript: {rscript()}')
