@@ -303,23 +303,44 @@ async function installBioconductor(rscript, markerFile) {
 
 // ========== App Lifecycle ==========
 
+function setupDatabases() {
+  return new Promise((resolve) => {
+    const marker = path.join(app.getPath('userData'), '.db_setup_done');
+    if (fs.existsSync(marker)) { resolve(); return; }
+
+    const req = http.get(`${BACKEND_URL}/api/v2/database/setup`, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        try { fs.writeFileSync(marker, 'done'); } catch(e) {}
+        console.log('[Main] Database setup:', data.substring(0, 100));
+        resolve();
+      });
+    });
+    req.on('error', () => resolve()); // Don't block if backend not ready
+    req.setTimeout(300000, () => { req.destroy(); resolve(); });
+  });
+}
+
 app.whenReady().then(async () => {
   startBackend();
-  ensureR(); // Start R setup in parallel, don't block startup
+  ensureR();
 
   try {
     await waitForBackend();
     console.log('[Main] Backend ready');
+
+    // First launch: download gene databases (GO/KEGG/MSigDB)
+    await setupDatabases();
+
     createMainWindow();
   } catch (err) {
     console.error('[Main]', err.message);
     dialog.showErrorBox(
       'Startup Failed',
       'The analysis engine could not start.\n\n' +
-      'Possible fixes:\n' +
       '1. Close all BEing Bio windows and try again.\n' +
-      '2. Restart your computer if the problem persists.\n' +
-      '3. Check if another program is using port ' + BACKEND_PORT + '.\n\n' +
+      '2. Restart your computer.\n' +
       'Error: ' + err.message
     );
     app.quit();

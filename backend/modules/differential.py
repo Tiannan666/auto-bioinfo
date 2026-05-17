@@ -1,30 +1,44 @@
-"""Differential expression via R/Bioconductor (DESeq2, edgeR, limma-voom)."""
+"""Differential expression — DESeq2-like + classical methods. Pure Python."""
 
-import tempfile
 import numpy as np
 import pandas as pd
-from pathlib import Path
+from scipy import stats as scipy_stats
 from statsmodels.stats.multitest import multipletests
 from typing import Dict, List
-
-from .r_engine import run_r, rscript_exe
 
 
 def run_differential(matrix: pd.DataFrame, group1_samples: List[str], group2_samples: List[str],
                      method: str = 'deseq2', logfc_threshold: float = 1.0,
                      pval_threshold: float = 0.05, fdr_threshold: float = 0.05,
-                     **kwargs) -> Dict:
+                     log2_transform: bool = False, filter_low: bool = True,
+                     min_count: int = 10, min_samples: int = 3) -> Dict:
 
     g1 = [c for c in group1_samples if c in matrix.select_dtypes(include=[np.number]).columns]
     g2 = [c for c in group2_samples if c in matrix.select_dtypes(include=[np.number]).columns]
     if len(g1) < 2 or len(g2) < 2:
         raise ValueError(f"Need >=2 samples per group. G1:{len(g1)} G2:{len(g2)}")
 
-    try:
-        result_df = _run_r_diff(matrix, g1, g2, method)
-    except Exception as e:
-        print(f"[Diff] R failed ({e}), using Python fallback")
-        return _python_fallback(matrix, g1, g2, logfc_threshold, fdr_threshold)
+    data = matrix.copy()
+    if filter_low:
+        numeric = data.select_dtypes(include=[np.number])
+        keep = (numeric >= min_count).sum(axis=1) >= min(min_samples, len(g1 + g2) // 2)
+        data = data.loc[keep]
+
+    if method == 'deseq2':
+        norm_data = _deseq2_normalize(data, g1 + g2)
+        results = _deseq2_test(norm_data, g1, g2)
+    elif method == 'ttest':
+        norm_data = _log2_cpm(data, g1 + g2)
+        results = _ttest_genes(norm_data, g1, g2)
+    elif method == 'wilcoxon':
+        norm_data = _log2_cpm(data, g1 + g2)
+        results = _wilcoxon_genes(norm_data, g1, g2)
+    elif method == 'limma':
+        norm_data = _log2_cpm(data, g1 + g2)
+        results = _limma_genes(norm_data, g1, g2)
+    else:
+        norm_data = _log2_cpm(data, g1 + g2)
+        results = _ttest_genes(norm_data, g1, g2)
 
     result_df['log2FC'] = pd.to_numeric(result_df['log2FC'], errors='coerce').fillna(0)
     result_df['fdr'] = pd.to_numeric(result_df['fdr'], errors='coerce').fillna(1)

@@ -462,6 +462,28 @@ async def v2_task_status(task_id: str = ""):
     }
 
 
+# --- Database Setup ---
+
+@app.get("/api/v2/database/setup")
+async def v2_database_setup():
+    """Download and cache gene databases (GO/KEGG/MSigDB). Called on first launch."""
+    try:
+        from .modules.gene_database import load_all
+        load_all()
+        from .modules.gene_database import get_go_sets, get_kegg_sets, get_msigdb_sets
+        go = get_go_sets()
+        kegg = get_kegg_sets()
+        msigdb = get_msigdb_sets()
+        return {
+            "ok": True,
+            "go_terms": sum(len(v) for v in go.values()) if isinstance(go, dict) else 0,
+            "kegg_pathways": len(kegg),
+            "msigdb_sets": len(msigdb),
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # --- scRNA-seq ---
 
 @app.get("/api/v2/scrna/status")

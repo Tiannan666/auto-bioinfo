@@ -87,9 +87,9 @@ def _parse_goa_gaf(text: str) -> Dict[str, Set[str]]:
 
 
 def _load_go(force_refresh: bool):
-    global _go_sets, _symbol_entrez
+    global _go_sets
 
-    # Try cached first
+    # Use cached if available
     cache = DB_DIR / "go_sets.json"
     if cache.exists() and not force_refresh:
         try:
@@ -98,41 +98,10 @@ def _load_go(force_refresh: bool):
             return
         except: pass
 
-    cat_map = {
-        'biological_process': 'BP',
-        'cellular_component': 'CC',
-        'molecular_function': 'MF',
-    }
-
-    try:
-        print("[GeneDB] Downloading GO ontology...")
-        obo_text = _download('http://purl.obolibrary.org/obo/go/go-basic.obo').decode('utf-8', errors='replace')
-        terms = _parse_go_obo(obo_text)
-        print(f"[GeneDB] GO terms: {len(terms)}")
-
-        print("[GeneDB] Downloading GOA human annotations...")
-        gaf_text = _download_gz('ftp://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz')
-        go_genes = _parse_goa_gaf(gaf_text)
-        print(f"[GeneDB] GO annotations: {len(go_genes)} terms with genes")
-
-        # Build category-specific gene sets
-        _go_sets = {'BP': {}, 'CC': {}, 'MF': {}}
-        for go_id, genes in go_genes.items():
-            if go_id not in terms or terms[go_id].get('obsolete'):
-                continue
-            cat = cat_map.get(terms[go_id].get('namespace', ''), 'BP')
-            name = terms[go_id]['name']
-            key = f"{go_id} {name}"
-            _go_sets[cat][key] = sorted(genes)
-
-        total = sum(len(v) for v in _go_sets.values())
-        print(f"[GeneDB] Built GO: {total} terms (BP:{len(_go_sets['BP'])} CC:{len(_go_sets['CC'])} MF:{len(_go_sets['MF'])})")
-        import json as j
-        cache.write_text(j.dumps(_go_sets))
-
-    except Exception as e:
-        print(f"[GeneDB] GO download failed: {e}")
-        _build_fallback_go()
+    # Use built-in as baseline (instant, works offline)
+    _build_fallback_go()
+    # Try background upgrade (non-blocking)
+    _try_upgrade_go(cache)
 
 
 def _load_kegg(force_refresh: bool):
@@ -205,6 +174,31 @@ def _load_msigdb():
         print(f"[GeneDB] MSigDB Hallmark: {len(_msigdb_sets)} sets")
     except Exception as e:
         print(f"[GeneDB] MSigDB failed: {e}")
+
+
+def _try_upgrade_go(cache):
+    """Background upgrade attempt - downloads full GO database with short timeout."""
+    import threading
+    def _bg():
+        try:
+            cat_map = {'biological_process':'BP','cellular_component':'CC','molecular_function':'MF'}
+            obo_text = _download('http://purl.obolibrary.org/obo/go/go-basic.obo').decode('utf-8', errors='replace')
+            terms = _parse_go_obo(obo_text)
+            gaf_text = _download_gz('ftp://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz')
+            go_genes = _parse_goa_gaf(gaf_text)
+            new_sets = {'BP': {}, 'CC': {}, 'MF': {}}
+            for go_id, genes in go_genes.items():
+                if go_id not in terms or terms[go_id].get('obsolete'): continue
+                cat = cat_map.get(terms[go_id].get('namespace',''), 'BP')
+                key = f"{go_id} {terms[go_id]['name']}"
+                new_sets[cat][key] = sorted(genes)
+            global _go_sets; _go_sets = new_sets
+            import json as j; cache.write_text(j.dumps(new_sets))
+            print(f"[GeneDB] Upgraded GO: {sum(len(v) for v in new_sets.values())} terms")
+        except Exception as e:
+            print(f"[GeneDB] GO upgrade unavailable (using built-in): {e}")
+    t = threading.Thread(target=_bg, daemon=True)
+    t.start()
 
 
 def _build_fallback_go():
