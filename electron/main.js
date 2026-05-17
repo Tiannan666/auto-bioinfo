@@ -154,26 +154,15 @@ async function setupR() {
 
   const biocScript = `
 options(repos=c(CRAN="https://mirrors.tuna.tsinghua.edu.cn/CRAN"))
-# Add BioC repo for install.packages
-local({r <- getOption("repos"); r["BioC"] <- "https://mirrors.tuna.tsinghua.edu.cn/bioconductor"; options(repos=r)})
-# Install BiocManager (binary)
+options(BioC_mirror="https://mirrors.tuna.tsinghua.edu.cn/bioconductor")
 if(!require("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
-# Set BiocManager to use binary installs
-BiocManager::install(version="3.20", update=FALSE, ask=FALSE)
-# Install packages one by one with binary priority
 pkgs <- c("${BIOC_PACKAGES.join('","')}")
 for (pkg in pkgs) {
   tryCatch({
-    install.packages(pkg, repos=BiocManager::repositories(), type="win.binary", quiet=TRUE)
+    BiocManager::install(pkg, update=FALSE, ask=FALSE)
     cat(paste0("OK:", pkg, "\\n"))
   }, error=function(e) {
-    # Try source install as fallback
-    tryCatch({
-      install.packages(pkg, repos=BiocManager::repositories(), type="source", quiet=TRUE)
-      cat(paste0("OK(SRC):", pkg, "\\n"))
-    }, error=function(e2) {
-      cat(paste0("FAIL:", pkg, "\\n"))
-    })
+    cat(paste0("FAIL:", pkg, "\\n"))
   })
 }
 cat("BIOC_DONE\\n")
