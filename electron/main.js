@@ -154,41 +154,59 @@ async function setupR() {
 
   const biocScript = `
 options(repos=c(CRAN="https://mirrors.tuna.tsinghua.edu.cn/CRAN"))
-options(BioC_mirror="https://mirrors.tuna.tsinghua.edu.cn/bioconductor")
-# Install BiocManager first (binary)
-if(!require("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE, type="win.binary")
-# Install packages one by one, skip failures
+# Add BioC repo for install.packages
+local({r <- getOption("repos"); r["BioC"] <- "https://mirrors.tuna.tsinghua.edu.cn/bioconductor"; options(repos=r)})
+# Install BiocManager (binary)
+if(!require("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
+# Set BiocManager to use binary installs
+BiocManager::install(version="3.20", update=FALSE, ask=FALSE)
+# Install packages one by one with binary priority
 pkgs <- c("${BIOC_PACKAGES.join('","')}")
 for (pkg in pkgs) {
   tryCatch({
-    BiocManager::install(pkg, update=FALSE, ask=FALSE, quiet=TRUE, type="binary", force=FALSE)
-    cat(paste0("INSTALLED: ", pkg, "\\n"))
+    install.packages(pkg, repos=BiocManager::repositories(), type="win.binary", quiet=TRUE)
+    cat(paste0("OK:", pkg, "\\n"))
   }, error=function(e) {
-    cat(paste0("FAILED: ", pkg, " - ", e$message, "\\n"))
+    # Try source install as fallback
+    tryCatch({
+      install.packages(pkg, repos=BiocManager::repositories(), type="source", quiet=TRUE)
+      cat(paste0("OK(SRC):", pkg, "\\n"))
+    }, error=function(e2) {
+      cat(paste0("FAIL:", pkg, "\\n"))
+    })
   })
 }
 cat("BIOC_DONE\\n")
 `;
 
+  console.log('[Main] Running Bioconductor install script...');
   return new Promise((resolve) => {
     const proc = spawn(rAfter.rscript, ['--no-save', '-e', biocScript], {
       env: { ...process.env, R_HOME: rAfter.home },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    let output = '';
     proc.stdout.on('data', d => {
       const txt = d.toString();
+      output += txt;
+      console.log('[Bioc]', txt.trim());
       if (txt.includes('BIOC_DONE')) {
-        console.log('[Main] Bioconductor installed');
+        console.log('[Main] Bioconductor install complete');
         if (setupWindow && !setupWindow.isDestroyed()) {
           setupWindow.webContents.send('r-progress', { msg: 'Setup complete!', pct: 100, done: true });
         }
         resolve(true);
       }
     });
-    proc.on('close', (code) => {
-      resolve(code === 0);
+    proc.stderr.on('data', d => {
+      const txt = d.toString().trim();
+      if (txt) console.error('[Bioc ERR]', txt);
     });
-    setTimeout(() => resolve(false), 600000); // 10 min timeout
+    proc.on('close', (code) => {
+      console.log('[Main] Bioc install exited:', code);
+      if (!output.includes('BIOC_DONE')) resolve(false);
+    });
+    setTimeout(() => resolve(false), 600000);
   });
 }
 
