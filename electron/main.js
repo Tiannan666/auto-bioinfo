@@ -298,30 +298,28 @@ ipcMain.on('r-setup-start', async () => {
 // ====== App Lifecycle ======
 
 app.whenReady().then(async () => {
-  // Start backend first (Python doesn't depend on R)
+  // Step 1: Start Python backend (needed for everything)
   startBackend();
+  try { await waitForBackend(); console.log('[Main] Backend ready'); }
+  catch (err) { dialog.showErrorBox('Startup Failed', err.message); app.quit(); return; }
 
-  // Check R in background — show setup window if needed
-  const rReady = rBiocReady();
-  if (!rReady) {
+  // Step 2: Ensure R + Bioconductor are installed (MANDATORY)
+  if (!rBiocReady()) {
     createRSetupWindow();
-    // Start R setup in background, don't block
-    setupR().then(ok => {
-      console.log('[Main] R setup result:', ok);
-      if (setupWindow && !setupWindow.isDestroyed()) {
-        setupWindow.webContents.send('r-progress', { msg: ok ? 'R ready! Restart to use full analysis.' : 'R setup incomplete. Basic analysis only.', pct: ok ? 100 : 30, done: true });
-      }
-    });
+    const ok = await setupR();
+    if (!ok) {
+      dialog.showErrorBox('Setup Failed',
+        'R installation was not completed.\n\n' +
+        'BEing Bio requires R with DESeq2, clusterProfiler, and fgsea.\n' +
+        'Please restart the application to try again, or install R manually from:\n' +
+        'https://cloud.r-project.org/bin/windows/base/');
+      app.quit(); return;
+    }
+    if (setupWindow && !setupWindow.isDestroyed()) setupWindow.close();
   }
 
-  try {
-    await waitForBackend();
-    console.log('[Main] Backend ready');
-    createMainWindow();
-  } catch (err) {
-    dialog.showErrorBox('Startup Failed', err.message);
-    app.quit();
-  }
+  // Step 3: R is ready, show main window
+  createMainWindow();
 });
 
 app.on('window-all-closed', () => { stopBackend(); app.quit(); });
