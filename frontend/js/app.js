@@ -14,6 +14,9 @@ function show(name) {
   for (var i = 0; i < links.length; i++) { links[i].classList.remove('active'); }
   var link = document.querySelector('[data-page="' + name + '"]');
   if (link) link.classList.add('active');
+  // Call init function if exists (e.g. drag-drop handler)
+  var initFn = window['init_' + name.replace(/-/g, '_')];
+  if (typeof initFn === 'function') initFn();
 }
 
 function route() {
