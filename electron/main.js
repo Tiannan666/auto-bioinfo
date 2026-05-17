@@ -43,7 +43,7 @@ function rBiocReady() {
   const r = findR();
   if (!r) return false;
   try {
-    const out = execSync(`"${r.rscript}" -e "cat(require('DESeq2')&&require('clusterProfiler')&&require('fgsea')&&require('ggplot2'))"`, { timeout: 15000, encoding: 'utf8' });
+    const out = execSync(`"${r.rscript}" -e "cat(require('DESeq2')&&require('clusterProfiler')&&require('fgsea'))"`, { timeout: 15000, encoding: 'utf8' });
     return out.includes('TRUE');
   } catch (e) { return false; }
 }
@@ -155,8 +155,18 @@ async function setupR() {
   const biocScript = `
 options(repos=c(CRAN="https://mirrors.tuna.tsinghua.edu.cn/CRAN"))
 options(BioC_mirror="https://mirrors.tuna.tsinghua.edu.cn/bioconductor")
-if(!require("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
-BiocManager::install(c("${BIOC_PACKAGES.join('","')}"), update=FALSE, ask=FALSE, quiet=TRUE)
+# Install BiocManager first (binary)
+if(!require("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE, type="win.binary")
+# Install packages one by one, skip failures
+pkgs <- c("${BIOC_PACKAGES.join('","')}")
+for (pkg in pkgs) {
+  tryCatch({
+    BiocManager::install(pkg, update=FALSE, ask=FALSE, quiet=TRUE, type="binary", force=FALSE)
+    cat(paste0("INSTALLED: ", pkg, "\\n"))
+  }, error=function(e) {
+    cat(paste0("FAILED: ", pkg, " - ", e$message, "\\n"))
+  })
+}
 cat("BIOC_DONE\\n")
 `;
 
