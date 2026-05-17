@@ -109,40 +109,17 @@ def _load_kegg(force_refresh: bool):
     cache = DB_DIR / "kegg_sets.json"
     if cache.exists() and not force_refresh:
         try:
-            _kegg_sets = json.loads(cache.read_text())
+            data = json.loads(cache.read_text())
+            if data: _kegg_sets = data
             return
         except: pass
 
+    # Use cache only. Network download via build_databases.py
     try:
-        print("[GeneDB] Fetching KEGG pathways...")
-        pathways_text = _download('https://rest.kegg.jp/list/pathway/hsa').decode('utf-8')
-        pathways = {}
-        for line in pathways_text.strip().split('\n'):
-            if '\t' not in line: continue
-            pid, name = line.split('\t', 1)
-            pid = pid.replace('path:', '')
-            pathways[pid] = f"{pid} {name}"
-
-        for pid, name in list(pathways.items())[:350]:
-            try:
-                genes_text = _download(f'https://rest.kegg.jp/link/genes/{pid}').decode('utf-8')
-                genes = []
-                for gline in genes_text.strip().split('\n'):
-                    if '\t' in gline:
-                        gid = gline.split('\t')[1].replace('hsa:', '')
-                        # Convert Entrez to symbol if we have it
-                        genes.append(_entrez_to_symbol.get(gid, gid))
-                if genes:
-                    _kegg_sets[name] = genes
-            except:
-                continue
-            if len(_kegg_sets) % 30 == 0:
-                time.sleep(0.3)  # Rate limit
-
-        print(f"[GeneDB] KEGG: {len(_kegg_sets)} pathways")
-        cache.write_text(json.dumps(_kegg_sets))
-    except Exception as e:
-        print(f"[GeneDB] KEGG failed: {e}")
+        data = json.loads(cache.read_text())
+        if data: _kegg_sets = data
+        return
+    except: pass
 
 
 def _load_msigdb():
@@ -151,26 +128,36 @@ def _load_msigdb():
     if p.exists():
         try:
             data = json.loads(p.read_text())
-            for entry in data:
-                name = entry.get('name', '')
-                gs = entry.get('geneSymbols', [])
-                if name and gs:
-                    _msigdb_sets[name] = gs
-            return
+            if isinstance(data, dict):
+                # GMT-derived format: {name: [genes]}
+                for name, gs in data.items():
+                    if name and gs:
+                        _msigdb_sets[name] = gs
+                return
+            elif isinstance(data, list):
+                # Old JSON format: [{name, geneSymbols}]
+                for entry in data:
+                    name = entry.get('name', '')
+                    gs = entry.get('geneSymbols', [])
+                    if name and gs:
+                        _msigdb_sets[name] = gs
+                return
         except: pass
 
-    # Download from Broad
+    # Download fallback
     try:
-        print("[GeneDB] Downloading MSigDB Hallmark...")
-        url = "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2024.1.Hs/h.all.v2024.1.Hs.json"
-        data = _download(url).decode('utf-8')
-        p.write_text(data)
-        data = json.loads(data)
-        for entry in data:
-            name = entry.get('name', '')
-            gs = entry.get('geneSymbols', [])
-            if name and gs:
-                _msigdb_sets[name] = gs
+        print("[GeneDB] Downloading MSigDB Hallmark (GMT)...")
+        url = "https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2024.1.Hs/h.all.v2024.1.Hs.symbols.gmt"
+        text = _download(url).decode('utf-8')
+        for line in text.strip().split('\n'):
+            parts = line.strip().split('\t')
+            if len(parts) >= 3:
+                name = parts[0]
+                genes = [g for g in parts[2:] if g.strip()]
+                if genes:
+                    _msigdb_sets[name] = genes
+        # Cache as {name: [genes]} dict
+        p.write_text(json.dumps(_msigdb_sets))
         print(f"[GeneDB] MSigDB Hallmark: {len(_msigdb_sets)} sets")
     except Exception as e:
         print(f"[GeneDB] MSigDB failed: {e}")
