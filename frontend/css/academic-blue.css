@@ -271,6 +271,8 @@ body {
 .badge-warning { background:var(--ab-warning-bg); color:var(--ab-warning); }
 .badge-error { background:var(--ab-error-bg); color:var(--ab-error); }
 .badge-info { background:var(--ab-info-bg); color:var(--ab-info); }
+.lang-switch { font-size:12px; padding:4px 8px; border:1px solid var(--ab-border); border-radius:4px; background:var(--ab-bg); color:var(--ab-text); cursor:pointer; outline:none; }
+.lang-switch:focus { border-color:var(--ab-btn); }
 
 /* ========== Steps / Progress ========== */
 .steps {

@@ -61,6 +61,25 @@ document.addEventListener('DOMContentLoaded', function() {
     I18N.applyAll();
   }
 
+  // Language switch
+  var langSel = document.getElementById('topbarLang');
+  if (langSel && typeof I18N !== 'undefined') {
+    langSel.value = I18N.lang;
+    langSel.addEventListener('change', function() {
+      var newLang = this.value;
+      localStorage.setItem('bioinfo_lang', newLang);
+      I18N._lang = newLang;
+      if (typeof I18N.applyAll === 'function') I18N.applyAll();
+      // Re-render current page
+      var hash = (window.location.hash || '#dashboard').replace('#', '');
+      if (!hash) hash = 'dashboard';
+      if (typeof _pages !== 'undefined' && _pages[hash]) {
+        document.getElementById('contentArea').innerHTML = _pages[hash]();
+        document.getElementById('pageTitle').textContent = (I18N.t('nav.' + hash)) || hash;
+      }
+    });
+  }
+
   // Route on hash change + initial load
   window.addEventListener('hashchange', route);
   route();
