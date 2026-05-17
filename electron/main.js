@@ -20,7 +20,7 @@ const R_MIRRORS = [
   `https://mirrors.tuna.tsinghua.edu.cn/CRAN/bin/windows/base/old/${R_VERSION}/${R_INSTALLER}`,
   `https://cloud.r-project.org/bin/windows/base/old/${R_VERSION}/${R_INSTALLER}`,
 ];
-const BIOC_PACKAGES = ['DESeq2','edgeR','limma','clusterProfiler','fgsea','ggplot2','org.Hs.eg.db','org.Mm.eg.db','enrichplot'];
+const BIOC_PACKAGES = ['DESeq2','edgeR','limma','clusterProfiler','fgsea','ggplot2','org.Hs.eg.db','org.Mm.eg.db','org.Rn.eg.db','enrichplot'];
 
 // ====== R Detection ======
 

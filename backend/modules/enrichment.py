@@ -10,6 +10,8 @@ SPECIES_CONFIG = {
     'hsa':     {'orgdb': 'org.Hs.eg.db', 'kegg': 'hsa'},
     'mouse':   {'orgdb': 'org.Mm.eg.db', 'kegg': 'mmu'},
     'mmu':     {'orgdb': 'org.Mm.eg.db', 'kegg': 'mmu'},
+    'rat':     {'orgdb': 'org.Rn.eg.db', 'kegg': 'rno'},
+    'rno':     {'orgdb': 'org.Rn.eg.db', 'kegg': 'rno'},
 }
 
 def run_enrichment(gene_list: List[str], pval_cutoff: float = 0.05,
