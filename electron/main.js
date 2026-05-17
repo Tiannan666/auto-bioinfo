@@ -16,7 +16,10 @@ const MAX_RETRIES = 60;
 const RETRY_INTERVAL = 1500;
 const R_VERSION = '4.6.0';
 const R_INSTALLER = `R-${R_VERSION}-win.exe`;
-const R_URL = `https://cloud.r-project.org/bin/windows/base/old/${R_VERSION}/${R_INSTALLER}`;
+const R_MIRRORS = [
+  `https://mirrors.tuna.tsinghua.edu.cn/CRAN/bin/windows/base/old/${R_VERSION}/${R_INSTALLER}`,
+  `https://cloud.r-project.org/bin/windows/base/old/${R_VERSION}/${R_INSTALLER}`,
+];
 const BIOC_PACKAGES = ['DESeq2','edgeR','limma','clusterProfiler','fgsea','ggplot2','org.Hs.eg.db','enrichplot'];
 
 // ====== R Detection ======
@@ -120,7 +123,7 @@ async function setupR() {
       setupWindow.webContents.send('r-progress', { msg: 'Downloading R (87MB)...', pct: 10 });
     }
 
-    await downloadFile(R_URL, downloadPath);
+    await downloadFile(R_MIRRORS, downloadPath);
     console.log('[Main] R downloaded');
 
     if (setupWindow && !setupWindow.isDestroyed()) {
@@ -150,7 +153,8 @@ async function setupR() {
   }
 
   const biocScript = `
-options(repos=c(CRAN="https://cloud.r-project.org"))
+options(repos=c(CRAN="https://mirrors.tuna.tsinghua.edu.cn/CRAN"))
+options(BioC_mirror="https://mirrors.tuna.tsinghua.edu.cn/bioconductor")
 if(!require("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
 BiocManager::install(c("${BIOC_PACKAGES.join('","')}"), update=FALSE, ask=FALSE, quiet=TRUE)
 cat("BIOC_DONE\\n")
@@ -178,17 +182,29 @@ cat("BIOC_DONE\\n")
   });
 }
 
-function downloadFile(url, dest) {
+function downloadFile(urls, dest) {
+  const urlList = Array.isArray(urls) ? urls : [urls];
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    const proto = url.startsWith('https') ? https : http;
-    proto.get(url, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return downloadFile(res.headers.location, dest).then(resolve).catch(reject);
-      }
-      res.pipe(file);
-      file.on('finish', () => { file.close(); resolve(); });
-    }).on('error', reject);
+    let idx = 0;
+    function tryNext() {
+      if (idx >= urlList.length) return reject(new Error('All mirrors failed'));
+      const url = urlList[idx++];
+      console.log('[Main] Downloading:', url);
+      const file = fs.createWriteStream(dest);
+      const proto = url.startsWith('https') ? https : http;
+      const req = proto.get(url, { timeout: 30000 }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          file.close();
+          urlList.unshift(res.headers.location);
+          return tryNext();
+        }
+        if (res.statusCode !== 200) { file.close(); return tryNext(); }
+        res.pipe(file);
+        file.on('finish', () => { file.close(); resolve(); });
+      });
+      req.on('error', () => { file.close(); tryNext(); });
+    }
+    tryNext();
   });
 }
 
