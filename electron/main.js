@@ -17,7 +17,7 @@ const RETRY_INTERVAL = 1500;
 
 const R_RUNTIME_FILE = 'r-runtime.tar.gz';
 const R_RUNTIME_URLS = [
-  'https://github.com/GodVfollower/auto-bioinfo/releases/download/v1.1.0/r-runtime.tar.gz',
+  'https://github.com/Tiannan666/auto-bioinfo/releases/download/v1.1.0/r-runtime.tar.gz',
 ];
 
 // ====== Path Helpers ======
