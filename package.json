@@ -17,6 +17,7 @@
   "build": {
     "appId": "com.being.bio",
     "productName": "BEing Bio",
+    "asar": false,
     "directories": {
       "output": "dist-electron"
     },
