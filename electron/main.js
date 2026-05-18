@@ -403,8 +403,8 @@ function createMainWindow() {
 
 // ====== IPC ======
 
-ipcMain.on('r-setup-start', async () => {
-  await setupR();
+ipcMain.on('r-setup-start', () => {
+  // Setup is already triggered from app.whenReady, this is just a UI signal
 });
 
 ipcMain.on('r-setup-retry', async () => {

@@ -49,10 +49,11 @@ def run_gsea(ranked_genes: List[str], scores: List[float],
         out = tmpdir / 'results.csv'
         if not out.exists():
             return {'type': 'gsea', 'terms': [], 'n_terms': 0}
+
+        df = pd.read_csv(out, sep='\t')
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
-    df = pd.read_csv(out, sep='\t')
     if len(df) == 0:
         return {'type': 'gsea', 'terms': [], 'n_terms': 0}
 

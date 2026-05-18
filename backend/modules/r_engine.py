@@ -6,15 +6,26 @@ from pathlib import Path
 _rscript = None
 
 def _find():
-    bases = [os.environ.get('R_HOME', ''), 'C:/Program Files/R']
+    r_home = os.environ.get('R_HOME', '')
+    if r_home:
+        direct = Path(r_home) / 'bin' / 'Rscript.exe'
+        if direct.exists():
+            return str(direct)
+    bases = [r_home, 'C:/Program Files/R']
     for base in bases:
-        if not base: continue
-        for d in sorted(Path(base).glob('R-*'), reverse=True):
+        if not base:
+            continue
+        p = Path(base)
+        if not p.exists():
+            continue
+        for d in sorted(p.glob('R-*'), reverse=True):
             exe = d / 'bin' / 'Rscript.exe'
-            if exe.exists(): return str(exe)
-    for d in os.environ.get('PATH','').split(os.pathsep):
+            if exe.exists():
+                return str(exe)
+    for d in os.environ.get('PATH', '').split(os.pathsep):
         exe = Path(d) / 'Rscript.exe'
-        if exe.exists(): return str(exe)
+        if exe.exists():
+            return str(exe)
     return None
 
 def r_available():
