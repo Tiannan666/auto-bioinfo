@@ -75,6 +75,7 @@ const DICT = {
   'nav.quality_control': { zh: '质量检查', en: 'Quality Control' },
   'nav.differential': { zh: '差异分析', en: 'Differential Analysis' },
   'nav.enrichment': { zh: '富集分析', en: 'Enrichment Analysis' },
+  'nav.immune': { zh: '免疫浸润', en: 'Immune Infiltration' },
   'nav.visualization': { zh: '可视化', en: 'Visualization' },
   'nav.intelligence': { zh: '智能分析', en: 'Intelligence' },
   'nav.interpretation': { zh: '结果解读', en: 'Interpretation' },
@@ -187,6 +188,15 @@ const DICT = {
 
   // Visualization
   'viz.desc': { zh: '生成论文级图表。选择图表类型，调整参数，支持多种格式导出。', en: 'Generate publication-quality figures. Select a plot type, adjust parameters, and export in multiple formats.' },
+
+  // Immune Infiltration
+  'immune.desc': { zh: '基于ssGSEA估算各样本的免疫细胞组成', en: 'Estimate immune cell composition per sample via ssGSEA' },
+  'immune.run': { zh: '运行免疫浸润分析', en: 'Run Immune Analysis' },
+  'immune.method': { zh: '方法', en: 'Method' },
+  'immune.cell_types': { zh: '免疫细胞类型', en: 'Cell Types' },
+  'immune.score': { zh: '浸润评分', en: 'Infiltration Score' },
+  'immune.placeholder': { zh: '加载表达数据后，点击运行分析免疫细胞浸润。', en: 'Load expression data, then click Run to analyze immune cell infiltration.' },
+  'immune.info': { zh: '使用22种免疫细胞标志基因集，通过ssGSEA算法对每个样本进行免疫浸润评分。', en: 'Scores each sample for 22 immune cell types using curated marker gene sets and the ssGSEA algorithm.' },
   'viz.plot_type': { zh: '图表类型', en: 'Plot Type' },
   'viz.volcano': { zh: '火山图', en: 'Volcano Plot' },
   'viz.heatmap': { zh: '热图', en: 'Heatmap' },

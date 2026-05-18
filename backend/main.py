@@ -22,6 +22,7 @@ from .modules.quality_control import run_qc
 from .modules.differential import run_differential
 from .modules.enrichment import run_enrichment
 from .modules.gsea_analysis import run_gsea
+from .modules.immune_infiltration import run_immune_infiltration
 from .modules.plotting import generate_plot, export_plot, set_output_dir, PLOT_FUNCTIONS
 from .modules.interpretation import generate_interpretation
 from .modules.storyline import generate_storylines
@@ -291,6 +292,27 @@ async def v2_gsea(req: EnrichmentRequest):
         result = run_gsea(genes, scores, gene_set_type=req.gsea_geneset or 'go',
                          pval_cutoff=req.pval_cutoff)
         _state['gsea_result'] = result
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# --- Immune Infiltration ---
+
+class ImmuneRequest(BaseModel):
+    project_id: str = "current"
+    method: str = "ssgsea"
+
+@app.post("/api/v2/analysis/immune")
+async def v2_immune(req: ImmuneRequest):
+    matrix = _state.get('expression_matrix')
+    if matrix is None:
+        return {"error": "No data loaded. Please load data first."}
+    try:
+        result = run_immune_infiltration(matrix, method=req.method)
+        _state['immune_result'] = result
+        logger.log_step(_state.get('project_id', 'unknown'), "immune_infiltration",
+                       {"method": req.method}, {"n_cell_types": result['n_cell_types']})
         return result
     except Exception as e:
         return {"error": str(e)}

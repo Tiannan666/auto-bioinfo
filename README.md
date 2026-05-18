@@ -43,9 +43,13 @@ BEing Bio is a **hybrid desktop application** with a dual-engine architecture:
 │  │ limma-like   │  │              │  │                    │ │
 │  └──────────────┘  └──────────────┘  └────────────────────┘ │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐ │
-│  │  QC Module   │  │  Viz Engine  │  │  AI Interpretation │ │
-│  │  7 checks    │  │  matplotlib  │  │  DeepSeek API      │ │
+│  │  QC Module   │  │  Viz Engine  │  │  Immune Infiltrate │ │
+│  │  7 checks    │  │  matplotlib  │  │  ssGSEA (22 types) │ │
 │  └──────────────┘  └──────────────┘  └────────────────────┘ │
+│  ┌──────────────┐                                            │
+│  │AI Interpret. │                                            │
+│  │DeepSeek API  │                                            │
+│  └──────────────┘                                            │
 └──────────────────────────────────────────────────────────────┘
                               │
 ┌──────────────────────────────────────────────────────────────┐
@@ -168,6 +172,14 @@ Four methods, all producing log2FC + p-value + FDR:
 - Running enrichment score plots
 - Leading-edge gene identification
 
+### Immune Infiltration (ssGSEA)
+- Estimates 22 immune cell type abundances per sample
+- Single-sample GSEA (ssGSEA) algorithm (Barbie et al., 2009)
+- Curated marker gene sets (LM22 / Charoentong et al., 2017)
+- Cell types: B cells, T cells (CD4/CD8/Treg/Tfh/γδ), NK, Monocytes, Macrophages (M0/M1/M2), DCs, Mast cells, Eosinophils, Neutrophils, Fibroblasts
+- Pure Python implementation — no additional R packages required
+- Heatmap-style visualization with normalized scores
+
 ### Visualization (13 Plot Types)
 Volcano, heatmap, PCA, correlation matrix, GO/KEGG bubble charts, GO/KEGG bar charts, GSEA running score curve, top DEG barplot, boxplot, violin plot, DEG statistics summary.
 
@@ -202,6 +214,10 @@ Requires DeepSeek API key. Generates:
 ### GSEA
 
 > "Gene Set Enrichment Analysis was performed on pre-ranked gene lists using the fgsea algorithm (Korotkevich et al., 2021) with 10,000 permutations. Gene sets with |NES| > 1 and FDR < 0.25 were considered significantly enriched."
+
+### Immune Infiltration
+
+> "Immune cell infiltration was estimated using the single-sample Gene Set Enrichment Analysis (ssGSEA) method (Barbie et al., 2009). Twenty-two immune cell type signatures derived from LM22 (Newman et al., 2015) and Charoentong et al. (2017) were scored for each sample. Scores were normalized to [0, 1] range per cell type for cross-sample comparison."
 
 ---
 
@@ -297,6 +313,9 @@ A: Yes. The app calls native Bioconductor packages (DESeq2, clusterProfiler, fgs
 - Korotkevich, G. et al. (2021). Fast gene set enrichment analysis. *bioRxiv*, 060012.
 - Liberzon, A. et al. (2015). The Molecular Signatures Database Hallmark Gene Set Collection. *Cell Systems*, 1(6), 417-425.
 - Benjamini, Y. & Hochberg, Y. (1995). Controlling the false discovery rate. *JRSSB*, 57(1), 289-300.
+- Barbie, D.A. et al. (2009). Systematic RNA interference reveals that oncogenic KRAS-driven cancers require TBK1. *Nature*, 462, 108-112.
+- Newman, A.M. et al. (2015). Robust enumeration of cell subsets from tissue expression profiles. *Nature Methods*, 12, 453-457.
+- Charoentong, P. et al. (2017). Pan-cancer immunogenomic analyses reveal genotype-immunophenotype relationships and predictors of response to checkpoint blockade. *Cell Reports*, 18(1), 248-262.
 
 ---
 

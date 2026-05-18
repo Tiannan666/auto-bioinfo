@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
   page('quality-control', renderQualityControl);
   page('differential', renderDifferential);
   page('enrichment', renderEnrichment);
+  page('immune', renderImmune);
   page('visualization', renderVisualization);
   page('interpretation', renderInterpretation);
   page('storyline', renderStoryline);

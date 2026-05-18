@@ -36,6 +36,7 @@ const API = {
   diffAnalysis: (params) => API.post('/api/v2/analysis/differential', params),
   enrichment: (params) => API.post('/api/v2/analysis/enrichment', params),
   gsea: (params) => API.post('/api/v2/analysis/gsea', params),
+  immune: (params) => API.post('/api/v2/analysis/immune', params),
 
   // Plots v2
   plotsGenerate: (params) => API.post('/api/v2/plots/generate', params),
