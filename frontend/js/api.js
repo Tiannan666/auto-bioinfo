@@ -37,6 +37,9 @@ const API = {
   enrichment: (params) => API.post('/api/v2/analysis/enrichment', params),
   gsea: (params) => API.post('/api/v2/analysis/gsea', params),
   immune: (params) => API.post('/api/v2/analysis/immune', params),
+  survival: (params) => API.post('/api/v2/analysis/survival', params),
+  wgcna: (params) => API.post('/api/v2/analysis/wgcna', params),
+  lasso: (params) => API.post('/api/v2/analysis/lasso', params),
 
   // Plots v2
   plotsGenerate: (params) => API.post('/api/v2/plots/generate', params),

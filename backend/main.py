@@ -23,6 +23,9 @@ from .modules.differential import run_differential
 from .modules.enrichment import run_enrichment
 from .modules.gsea_analysis import run_gsea
 from .modules.immune_infiltration import run_immune_infiltration
+from .modules.survival_analysis import run_survival
+from .modules.wgcna_analysis import run_wgcna
+from .modules.lasso_analysis import run_lasso
 from .modules.plotting import generate_plot, export_plot, set_output_dir, PLOT_FUNCTIONS
 from .modules.interpretation import generate_interpretation
 from .modules.storyline import generate_storylines
@@ -313,6 +316,87 @@ async def v2_immune(req: ImmuneRequest):
         _state['immune_result'] = result
         logger.log_step(_state.get('project_id', 'unknown'), "immune_infiltration",
                        {"method": req.method}, {"n_cell_types": result['n_cell_types']})
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# --- Survival Analysis ---
+
+class SurvivalRequest(BaseModel):
+    project_id: str = "current"
+    gene: str = ""
+    cutoff: str = "median"
+
+@app.post("/api/v2/analysis/survival")
+async def v2_survival(req: SurvivalRequest):
+    matrix = _state.get('expression_matrix')
+    if matrix is None:
+        return {"error": "No data loaded. Please load data first."}
+    if not req.gene:
+        return {"error": "Please specify a gene name."}
+    try:
+        clinical = _state.get('clinical_data')
+        result = run_survival(matrix, gene=req.gene, clinical=clinical, cutoff=req.cutoff)
+        _state['survival_result'] = result
+        logger.log_step(_state.get('project_id', 'unknown'), "survival",
+                       {"gene": req.gene}, {"hr": result['hr'], "pval": result['logrank_pval']})
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# --- WGCNA ---
+
+class WGCNARequest(BaseModel):
+    project_id: str = "current"
+    n_top_genes: int = 5000
+    min_module_size: int = 30
+    soft_power: Optional[int] = None
+
+@app.post("/api/v2/analysis/wgcna")
+async def v2_wgcna(req: WGCNARequest):
+    matrix = _state.get('expression_matrix')
+    if matrix is None:
+        return {"error": "No data loaded. Please load data first."}
+    try:
+        result = run_wgcna(matrix, n_top_genes=req.n_top_genes,
+                          soft_power=req.soft_power, min_module_size=req.min_module_size)
+        _state['wgcna_result'] = result
+        logger.log_step(_state.get('project_id', 'unknown'), "wgcna",
+                       {"n_top_genes": req.n_top_genes},
+                       {"n_modules": result['n_modules']})
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# --- LASSO Biomarker ---
+
+class LassoRequest(BaseModel):
+    project_id: str = "current"
+    group1: str = ""
+    group2: str = ""
+    n_features: int = 50
+
+@app.post("/api/v2/analysis/lasso")
+async def v2_lasso(req: LassoRequest):
+    matrix = _state.get('expression_matrix')
+    if matrix is None:
+        return {"error": "No data loaded. Please load data first."}
+
+    sample_ids = _state.get('sample_ids', matrix.select_dtypes(include=['number']).columns.tolist())
+    g1 = [s for s in sample_ids if req.group1.lower() in s.lower()] if req.group1 else sample_ids[:len(sample_ids)//2]
+    g2 = [s for s in sample_ids if req.group2.lower() in s.lower()] if req.group2 else sample_ids[len(sample_ids)//2:]
+
+    if not g1 or not g2:
+        return {"error": "Could not determine groups. Please specify group names."}
+    try:
+        result = run_lasso(matrix, g1, g2, n_features=req.n_features)
+        _state['lasso_result'] = result
+        logger.log_step(_state.get('project_id', 'unknown'), "lasso",
+                       {"n_features": req.n_features},
+                       {"n_selected": result['n_selected'], "auc": result['cv_auc']})
         return result
     except Exception as e:
         return {"error": str(e)}

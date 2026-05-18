@@ -42,6 +42,9 @@ document.addEventListener('DOMContentLoaded', function() {
   page('differential', renderDifferential);
   page('enrichment', renderEnrichment);
   page('immune', renderImmune);
+  page('survival', renderSurvival);
+  page('wgcna', renderWgcna);
+  page('lasso', renderLasso);
   page('visualization', renderVisualization);
   page('interpretation', renderInterpretation);
   page('storyline', renderStoryline);

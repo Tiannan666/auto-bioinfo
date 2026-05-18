@@ -180,6 +180,30 @@ Four methods, all producing log2FC + p-value + FDR:
 - Pure Python implementation — no additional R packages required
 - Heatmap-style visualization with normalized scores
 
+### Survival Analysis (Kaplan-Meier + Cox)
+- Single-gene survival analysis with Kaplan-Meier curves
+- Cox proportional hazards regression (HR, 95% CI, P-value)
+- Log-rank test for group comparison
+- Automatic median-based high/low expression grouping
+- Publication-ready survival curves via R survminer
+- Hazard ratio forest plot interpretation
+
+### WGCNA (Weighted Gene Co-expression Network)
+- Automatic soft-threshold power selection
+- Gene module identification (blockwiseModules)
+- Hub gene detection per module (kME ranking)
+- Color-coded module visualization
+- Requires ≥ 6 samples, top 5000 variable genes by default
+- R WGCNA package (Langfelder & Horvath, 2008)
+
+### LASSO Biomarker Selection
+- L1-regularized logistic regression (LassoCV)
+- Cross-validated optimal lambda selection
+- Diagnostic/prognostic biomarker gene signature
+- AUC and accuracy metrics with 5-fold CV
+- Coefficient-ranked biomarker list with direction
+- Pure Python (scikit-learn), no R dependency
+
 ### Visualization (13 Plot Types)
 Volcano, heatmap, PCA, correlation matrix, GO/KEGG bubble charts, GO/KEGG bar charts, GSEA running score curve, top DEG barplot, boxplot, violin plot, DEG statistics summary.
 
@@ -218,6 +242,18 @@ Requires DeepSeek API key. Generates:
 ### Immune Infiltration
 
 > "Immune cell infiltration was estimated using the single-sample Gene Set Enrichment Analysis (ssGSEA) method (Barbie et al., 2009). Twenty-two immune cell type signatures derived from LM22 (Newman et al., 2015) and Charoentong et al. (2017) were scored for each sample. Scores were normalized to [0, 1] range per cell type for cross-sample comparison."
+
+### Survival Analysis
+
+> "Kaplan-Meier survival analysis was performed with patients stratified by median gene expression into high and low groups. Statistical significance was assessed using the log-rank test. Cox proportional hazards regression was used to calculate hazard ratios (HR) with 95% confidence intervals. Analyses were performed using the R survival and survminer packages."
+
+### WGCNA
+
+> "Weighted Gene Co-expression Network Analysis (WGCNA) was performed using the R WGCNA package (Langfelder & Horvath, 2008). The top 5000 most variable genes were selected. A scale-free topology model fit was used to determine the optimal soft-thresholding power. Modules were identified using dynamic tree cutting with a minimum module size of 30. Hub genes were defined as those with the highest module membership (kME) within each module."
+
+### LASSO Biomarker Selection
+
+> "Biomarker gene signatures were identified using LASSO (Least Absolute Shrinkage and Selection Operator) logistic regression with 10-fold cross-validation for optimal lambda selection (Tibshirani, 1996). Model performance was evaluated using 5-fold cross-validated AUC and accuracy metrics."
 
 ---
 
@@ -316,6 +352,8 @@ A: Yes. The app calls native Bioconductor packages (DESeq2, clusterProfiler, fgs
 - Barbie, D.A. et al. (2009). Systematic RNA interference reveals that oncogenic KRAS-driven cancers require TBK1. *Nature*, 462, 108-112.
 - Newman, A.M. et al. (2015). Robust enumeration of cell subsets from tissue expression profiles. *Nature Methods*, 12, 453-457.
 - Charoentong, P. et al. (2017). Pan-cancer immunogenomic analyses reveal genotype-immunophenotype relationships and predictors of response to checkpoint blockade. *Cell Reports*, 18(1), 248-262.
+- Langfelder, P. & Horvath, S. (2008). WGCNA: an R package for weighted correlation network analysis. *BMC Bioinformatics*, 9, 559.
+- Tibshirani, R. (1996). Regression shrinkage and selection via the LASSO. *JRSSB*, 58(1), 267-288.
 
 ---
 
