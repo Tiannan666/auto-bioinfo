@@ -8,10 +8,14 @@ dist/
 build-pyinstaller/
 *.spec
 
-# Embedded Python runtime (too large, rebuild locally)
+# Embedded runtimes (too large, rebuild locally)
 runtime/
 python-embed.zip
 runtime.zip
+r-runtime.tar.gz
+
+# App data directory
+data/
 
 # Python
 __pycache__/

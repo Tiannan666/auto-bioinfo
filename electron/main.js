@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const { spawn, execSync } = require('child_process');
 const path = require('path');
 const http = require('http');
@@ -14,44 +14,47 @@ const BACKEND_PORT = 8000;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 const MAX_RETRIES = 60;
 const RETRY_INTERVAL = 1500;
-const R_VERSION = '4.6.0';
-const R_ZIP = `R-${R_VERSION}-win.zip`;
-const R_MIRRORS = [
-  `https://mirrors.tuna.tsinghua.edu.cn/CRAN/bin/windows/base/old/${R_VERSION}/${R_ZIP}`,
-  `https://cloud.r-project.org/bin/windows/base/old/${R_VERSION}/${R_ZIP}`,
+
+const R_RUNTIME_FILE = 'r-runtime.tar.gz';
+const R_RUNTIME_URLS = [
+  'https://github.com/GodVfollower/auto-bioinfo/releases/download/v1.0.0/r-runtime.tar.gz',
 ];
-const BIOC_PACKAGES = ['DESeq2','edgeR','limma','clusterProfiler','fgsea','ggplot2','org.Hs.eg.db','org.Mm.eg.db','org.Rn.eg.db','enrichplot'];
+
+// ====== Path Helpers ======
+
+function getProjectRoot() {
+  return app.isPackaged ? path.dirname(app.getPath('exe')) : path.join(__dirname, '..');
+}
+
+function getRuntimeBase() {
+  return path.join(getProjectRoot(), 'runtime');
+}
+
+function getDataDir() {
+  return path.join(getProjectRoot(), 'data');
+}
 
 // ====== R Detection ======
 
 function findR() {
-  const bases = [
-    path.join(app.getPath('userData'), 'runtime', 'R'),
-    path.join(process.env['ProgramFiles'] || 'C:/Program Files', 'R'),
-    'C:/Program Files/R',
-  ];
-  for (const base of bases) {
-    if (!fs.existsSync(base)) continue;
-    // Direct bin/Rscript.exe (ZIP extraction style)
-    const direct = path.join(base, 'bin', 'Rscript.exe');
-    if (fs.existsSync(direct)) return { home: base, rscript: direct };
-    // R-4.6.0 style subdirectory
-    const dirs = fs.readdirSync(base).filter(d => d.startsWith('R-')).sort().reverse();
+  const rBase = path.join(getRuntimeBase(), 'R');
+  if (!fs.existsSync(rBase)) return null;
+
+  const direct = path.join(rBase, 'bin', 'Rscript.exe');
+  if (fs.existsSync(direct)) return { home: rBase, rscript: direct };
+
+  try {
+    const dirs = fs.readdirSync(rBase).filter(d => d.startsWith('R-')).sort().reverse();
     for (const d of dirs) {
-      const rscript = path.join(base, d, 'bin', 'Rscript.exe');
-      if (fs.existsSync(rscript)) return { home: path.join(base, d), rscript: rscript };
+      const rscript = path.join(rBase, d, 'bin', 'Rscript.exe');
+      if (fs.existsSync(rscript)) return { home: path.join(rBase, d), rscript };
     }
-  }
+  } catch (e) {}
   return null;
 }
 
-function rBiocReady() {
-  const r = findR();
-  if (!r) return false;
-  try {
-    const out = execSync(`"${r.rscript}" -e "cat(require('DESeq2')&&require('clusterProfiler')&&require('fgsea'))"`, { timeout: 15000, encoding: 'utf8' });
-    return out.includes('TRUE');
-  } catch (e) { return false; }
+function rReady() {
+  return !!findR();
 }
 
 // ====== R Setup UI ======
@@ -80,172 +83,236 @@ h1{font-size:20px;color:#1E3A8A;margin-bottom:8px}
 .progress{width:320px;height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;margin:16px 0}
 .progress .bar{height:100%;background:#2563EB;width:0%;transition:width .3s}
 .status{font-size:12px;color:#6B7280;margin-top:8px}
+.speed{font-size:11px;color:#9CA3AF;margin-top:4px}
 .btn{padding:10px 24px;font-size:14px;font-weight:600;border:none;border-radius:6px;cursor:pointer;margin-top:16px}
 .btn-primary{background:#2563EB;color:#fff}
-.btn-secondary{background:#fff;color:#6B7280;border:1px solid #E5E7EB;margin-left:8px}
+.btn-retry{background:#DC2626;color:#fff;display:none}
 </style></head><body>
 <div class="top">BEing Bio Setup</div>
 <div class="content" id="content">
   <h1>Setting Up R Engine</h1>
   <p class="desc">BEing Bio uses R with DESeq2, clusterProfiler, fgsea, and ggplot2<br>for publication-quality bioinformatics analysis.</p>
   <div class="progress"><div class="bar" id="bar"></div></div>
-  <div class="status" id="status">Checking R installation...</div>
-  <div id="btns"></div>
+  <div class="status" id="status">Initializing...</div>
+  <div class="speed" id="speed"></div>
+  <div id="btns">
+    <button class="btn btn-retry" id="retryBtn" onclick="retry()">Retry</button>
+  </div>
 </div>
 <script>
 const { ipcRenderer } = require('electron');
-const steps = ['Downloading R','Installing R','Installing Bioconductor packages','Done'];
-let current = 0;
-function update(msg, pct) {
+function update(msg, pct, spd) {
   document.getElementById('status').textContent = msg;
   document.getElementById('bar').style.width = pct + '%';
+  document.getElementById('speed').textContent = spd || '';
 }
-// Start immediately
-update('Setting up R engine...', 5);
-ipcRenderer.send('r-setup-start');
+function showRetry() {
+  document.getElementById('retryBtn').style.display = 'inline-block';
+}
+function retry() {
+  document.getElementById('retryBtn').style.display = 'none';
+  ipcRenderer.send('r-setup-retry');
+}
 ipcRenderer.on('r-progress', (e, data) => {
-  update(data.msg, data.pct);
+  update(data.msg, data.pct, data.speed || '');
   if (data.done) {
     document.getElementById('btns').innerHTML = '<button class="btn btn-primary" onclick="window.close()">Launch BEing Bio</button>';
   }
+  if (data.failed) {
+    showRetry();
+  }
 });
+update('Setting up R engine...', 5);
+ipcRenderer.send('r-setup-start');
 </script></body></html>`;
+}
+
+function sendProgress(msg, pct, extra = {}) {
+  if (setupWindow && !setupWindow.isDestroyed()) {
+    setupWindow.webContents.send('r-progress', { msg, pct, ...extra });
+  }
+}
+
+// ====== Download with Resume ======
+
+function downloadWithResume(urls, dest, onProgress) {
+  const urlList = Array.isArray(urls) ? [...urls] : [urls];
+  return new Promise((resolve) => {
+    let idx = 0;
+    let totalSize = 0;
+    let startByte = 0;
+
+    try { startByte = fs.statSync(dest).size; } catch (e) {}
+
+    function tryNext() {
+      if (idx >= urlList.length) return resolve(false);
+      const url = urlList[idx++];
+      console.log('[Main] Downloading:', url, startByte > 0 ? `(resume from ${startByte})` : '');
+
+      const headers = {};
+      if (startByte > 0) headers['Range'] = `bytes=${startByte}-`;
+
+      const proto = url.startsWith('https') ? https : http;
+      const req = proto.get(url, { headers }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          let location = res.headers.location;
+          if (location.startsWith('/')) {
+            const parsed = new URL(url);
+            location = `${parsed.protocol}//${parsed.host}${location}`;
+          }
+          urlList.splice(idx - 1, 0, location);
+          return tryNext();
+        }
+
+        if (res.statusCode === 416) {
+          resolve(true);
+          return;
+        }
+
+        if (res.statusCode !== 200 && res.statusCode !== 206) {
+          console.log('[Main] HTTP', res.statusCode, '- trying next mirror');
+          res.resume();
+          return tryNext();
+        }
+
+        const contentLength = parseInt(res.headers['content-length'] || '0', 10);
+        if (res.statusCode === 200) {
+          totalSize = contentLength;
+          startByte = 0;
+        } else {
+          totalSize = startByte + contentLength;
+        }
+
+        const flags = res.statusCode === 206 ? 'a' : 'w';
+        const file = fs.createWriteStream(dest, { flags });
+        let received = startByte;
+        let lastTime = Date.now();
+        let lastReceived = received;
+        let staleTimer = null;
+
+        function resetStaleTimer() {
+          if (staleTimer) clearTimeout(staleTimer);
+          staleTimer = setTimeout(() => {
+            console.log('[Main] Download stalled, trying next mirror');
+            req.destroy();
+            file.close();
+            startByte = received;
+            tryNext();
+          }, 60000);
+        }
+
+        resetStaleTimer();
+
+        res.on('data', (chunk) => {
+          received += chunk.length;
+          resetStaleTimer();
+
+          const now = Date.now();
+          if (now - lastTime > 500) {
+            const speed = ((received - lastReceived) / (now - lastTime) * 1000) / (1024 * 1024);
+            const pct = totalSize > 0 ? Math.round((received / totalSize) * 100) : 0;
+            if (onProgress) onProgress(pct, `${speed.toFixed(1)} MB/s`);
+            lastTime = now;
+            lastReceived = received;
+          }
+        });
+
+        res.pipe(file);
+        file.on('finish', () => {
+          if (staleTimer) clearTimeout(staleTimer);
+          file.close();
+          resolve(true);
+        });
+        file.on('error', (e) => {
+          if (staleTimer) clearTimeout(staleTimer);
+          console.error('[Main] Write error:', e.message);
+          file.close();
+          startByte = received;
+          tryNext();
+        });
+      });
+
+      req.on('error', (e) => {
+        console.error('[Main] Download error:', e.message);
+        startByte = startByte;
+        tryNext();
+      });
+    }
+    tryNext();
+  });
+}
+
+// ====== Large ZIP Extraction ======
+
+function extractArchive(archivePath, destDir) {
+  return new Promise((resolve) => {
+    console.log('[Main] Extracting with system tar...');
+    const proc = spawn('tar', ['-xzf', archivePath, '-C', destDir]);
+    proc.stderr.on('data', d => console.error('[tar]', d.toString().trim()));
+    proc.on('close', code => {
+      resolve(code === 0);
+    });
+    proc.on('error', () => {
+      resolve(false);
+    });
+  });
 }
 
 // ====== R Setup Logic ======
 
 async function setupR() {
-  if (rBiocReady()) {
-    console.log('[Main] R + Bioconductor ready');
+  if (rReady()) {
+    console.log('[Main] R engine already installed');
     return true;
   }
 
-  const r = findR();
-  if (!r) {
-    // Download R ZIP (no admin needed, just extract like Python runtime)
-    const downloadPath = path.join(app.getPath('temp'), R_ZIP);
-    const rExtractDir = path.join(app.getPath('userData'), 'runtime', 'R');
+  const rBase = path.join(getRuntimeBase(), 'R');
+  const downloadPath = path.join(app.getPath('temp'), R_RUNTIME_FILE);
 
-    if (setupWindow && !setupWindow.isDestroyed()) {
-      setupWindow.webContents.send('r-progress', { msg: 'Downloading R (80MB)...', pct: 10 });
-    }
+  sendProgress('Downloading R analysis engine...', 10);
 
-    await downloadFile(R_MIRRORS, downloadPath);
-    console.log('[Main] R downloaded');
+  const ok = await downloadWithResume(R_RUNTIME_URLS, downloadPath, (pct, speed) => {
+    const mappedPct = 10 + Math.round(pct * 0.6);
+    sendProgress(`Downloading R engine... ${pct}%`, mappedPct, { speed });
+  });
 
-    if (setupWindow && !setupWindow.isDestroyed()) {
-      setupWindow.webContents.send('r-progress', { msg: 'Extracting R...', pct: 30 });
-    }
-
-    try {
-      fs.mkdirSync(rExtractDir, { recursive: true });
-      const zip = new AdmZip(downloadPath);
-      zip.extractAllTo(rExtractDir, true);
-      console.log('[Main] R extracted');
-    } catch (e) {
-      console.error('[Main] R extraction failed:', e.message);
-      return false;
-    }
-
-    // Clean up zip
-    try { fs.unlinkSync(downloadPath); } catch(e) {}
-  }
-
-  // Install Bioconductor packages
-  const rAfter = findR();
-  if (!rAfter) {
-    console.log('[Main] R install failed');
+  if (!ok) {
+    console.error('[Main] R download failed');
+    sendProgress('Download failed. Please check your network.', 10, { failed: true });
     return false;
   }
 
-  if (setupWindow && !setupWindow.isDestroyed()) {
-    setupWindow.webContents.send('r-progress', { msg: 'Installing Bioconductor packages (2-5 min)...', pct: 50 });
+  console.log('[Main] R runtime downloaded');
+  sendProgress('Extracting R engine (please wait)...', 75);
+
+  fs.mkdirSync(rBase, { recursive: true });
+  const extracted = await extractArchive(downloadPath, rBase);
+
+  if (!extracted) {
+    console.error('[Main] R extraction failed');
+    sendProgress('Extraction failed.', 75, { failed: true });
+    return false;
   }
 
-  const biocScript = `
-options(repos=c(CRAN="https://mirrors.tuna.tsinghua.edu.cn/CRAN"))
-options(BioC_mirror="https://mirrors.tuna.tsinghua.edu.cn/bioconductor")
-if(!require("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
-pkgs <- c("${BIOC_PACKAGES.join('","')}")
-for (pkg in pkgs) {
-  tryCatch({
-    BiocManager::install(pkg, update=FALSE, ask=FALSE)
-    cat(paste0("OK:", pkg, "\\n"))
-  }, error=function(e) {
-    cat(paste0("FAIL:", pkg, "\\n"))
-  })
-}
-cat("BIOC_DONE\\n")
-`;
+  try { fs.unlinkSync(downloadPath); } catch (e) {}
 
-  console.log('[Main] Running Bioconductor install script...');
-  return new Promise((resolve) => {
-    const proc = spawn(rAfter.rscript, ['--no-save', '-e', biocScript], {
-      env: { ...process.env, R_HOME: rAfter.home },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let output = '';
-    proc.stdout.on('data', d => {
-      const txt = d.toString();
-      output += txt;
-      console.log('[Bioc]', txt.trim());
-      if (txt.includes('BIOC_DONE')) {
-        console.log('[Main] Bioconductor install complete');
-        if (setupWindow && !setupWindow.isDestroyed()) {
-          setupWindow.webContents.send('r-progress', { msg: 'Setup complete!', pct: 100, done: true });
-        }
-        resolve(true);
-      }
-    });
-    proc.stderr.on('data', d => {
-      const txt = d.toString().trim();
-      if (txt) console.error('[Bioc ERR]', txt);
-    });
-    proc.on('close', (code) => {
-      console.log('[Main] Bioc install exited:', code);
-      if (!output.includes('BIOC_DONE')) resolve(false);
-    });
-    setTimeout(() => resolve(false), 600000);
-  });
-}
+  if (!findR()) {
+    console.error('[Main] R not found after extraction');
+    sendProgress('Setup failed - R engine not found after extraction.', 80, { failed: true });
+    return false;
+  }
 
-function downloadFile(urls, dest) {
-  const urlList = Array.isArray(urls) ? urls : [urls];
-  return new Promise((resolve, reject) => {
-    let idx = 0;
-    function tryNext() {
-      if (idx >= urlList.length) return reject(new Error('All mirrors failed'));
-      const url = urlList[idx++];
-      console.log('[Main] Downloading:', url);
-      const file = fs.createWriteStream(dest);
-      const proto = url.startsWith('https') ? https : http;
-      const req = proto.get(url, { timeout: 30000 }, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          file.close();
-          urlList.unshift(res.headers.location);
-          return tryNext();
-        }
-        if (res.statusCode !== 200) { file.close(); return tryNext(); }
-        res.pipe(file);
-        file.on('finish', () => { file.close(); resolve(); });
-      });
-      req.on('error', () => { file.close(); tryNext(); });
-    }
-    tryNext();
-  });
+  console.log('[Main] R engine ready');
+  sendProgress('Setup complete!', 100, { done: true });
+  return true;
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ====== Python Runtime ======
 
-function getProjectRoot() {
-  return app.isPackaged ? path.dirname(app.getPath('exe')) : path.join(__dirname, '..');
-}
-
 function getRuntimePython() {
-  const userData = app.getPath('userData');
-  const runtimeDir = path.join(userData, 'runtime');
+  const runtimeDir = getRuntimeBase();
   const pythonExe = path.join(runtimeDir, 'python', 'python.exe');
   if (fs.existsSync(pythonExe)) return pythonExe;
 
@@ -256,8 +323,9 @@ function getRuntimePython() {
 
   console.log('[Main] Extracting Python runtime...');
   try {
-    fs.mkdirSync(userData, { recursive: true });
-    new AdmZip(zipPath).extractAllTo(userData, true);
+    const parentDir = getProjectRoot();
+    fs.mkdirSync(parentDir, { recursive: true });
+    new AdmZip(zipPath).extractAllTo(parentDir, true);
   } catch (e) { console.error('[Main]', e.message); return null; }
   return fs.existsSync(pythonExe) ? pythonExe : null;
 }
@@ -279,7 +347,9 @@ function getBackendCommand() {
 
 function startBackend() {
   const backend = getBackendCommand();
-  const dataDir = app.getPath('userData');
+  const dataDir = getDataDir();
+  fs.mkdirSync(dataDir, { recursive: true });
+
   const r = findR();
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
@@ -289,7 +359,7 @@ function startBackend() {
   console.log('[Main] Starting backend:', backend.cmd, args.join(' '));
 
   backendProcess = spawn(backend.cmd, args, {
-    cwd: app.isPackaged ? path.dirname(app.getPath('exe')) : getProjectRoot(),
+    cwd: getProjectRoot(),
     stdio: ['ignore', 'pipe', 'pipe'],
     env: env,
   });
@@ -333,35 +403,35 @@ function createMainWindow() {
 
 // ====== IPC ======
 
-const { ipcMain } = require('electron');
 ipcMain.on('r-setup-start', async () => {
   await setupR();
+});
+
+ipcMain.on('r-setup-retry', async () => {
+  const ok = await setupR();
+  if (ok && setupWindow && !setupWindow.isDestroyed()) {
+    setupWindow.close();
+    createMainWindow();
+  }
 });
 
 // ====== App Lifecycle ======
 
 app.whenReady().then(async () => {
-  // Step 1: Start Python backend (needed for everything)
   startBackend();
   try { await waitForBackend(); console.log('[Main] Backend ready'); }
   catch (err) { dialog.showErrorBox('Startup Failed', err.message); app.quit(); return; }
 
-  // Step 2: Ensure R + Bioconductor are installed (MANDATORY)
-  if (!rBiocReady()) {
+  if (!rReady()) {
     createRSetupWindow();
     const ok = await setupR();
     if (!ok) {
-      dialog.showErrorBox('Setup Failed',
-        'R installation was not completed.\n\n' +
-        'BEing Bio requires R with DESeq2, clusterProfiler, and fgsea.\n' +
-        'Please restart the application to try again, or install R manually from:\n' +
-        'https://cloud.r-project.org/bin/windows/base/');
-      app.quit(); return;
+      // Don't quit - let user retry via the setup window button
+      return;
     }
     if (setupWindow && !setupWindow.isDestroyed()) setupWindow.close();
   }
 
-  // Step 3: R is ready, show main window
   createMainWindow();
 });
 
