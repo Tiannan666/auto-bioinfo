@@ -89,7 +89,7 @@ BEing Bio is a **hybrid desktop application** with a dual-engine architecture:
 
 1. Download `BEing-Bio-Setup-x.x.x.exe` from [Releases](https://github.com/Tiannan666/auto-bioinfo/releases)
 2. Run installer — choose any installation directory
-3. Download the R runtime package from [Releases](https://github.com/Tiannan666/auto-bioinfo/releases) and extract it to the installation directory's `runtime/R/` folder
+3. Download the R runtime package from [Releases](https://github.com/Tiannan666/auto-bioinfo/releases) and extract R to the installation directory's `runtime/` folder
 4. Launch BEing Bio — all features ready to use
 
 **Requirements:**
