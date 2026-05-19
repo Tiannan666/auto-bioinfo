@@ -34,6 +34,7 @@ from .modules.ppt_export import export_ppt
 from .modules.scrna_interface import scrna_status
 from .modules.task_logger import TaskLogger
 from .modules.file_manager import get_project_dir, ensure_dir
+from .modules.r_engine import r_available
 
 app = FastAPI(title="BEing Bio", version="0.3.0")
 
@@ -121,6 +122,11 @@ async def chat_endpoint(req: ChatRequest):
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+@app.get("/api/v2/r/status")
+async def v2_r_status():
+    """Report whether the R runtime is available at runtime/R/."""
+    return {"available": r_available()}
 
 
 # ========== v2 Endpoints ==========

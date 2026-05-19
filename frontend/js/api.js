@@ -22,6 +22,9 @@ const API = {
   configStatus: () => API.get('/api/config/status'),
   configSave: (key) => API.post('/api/config', { deepseek_api_key: key }),
 
+  // R Engine Status
+  rStatus: () => API.get('/api/v2/r/status'),
+
   // Health
   health: () => API.get('/api/health'),
 

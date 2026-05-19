@@ -6,11 +6,25 @@ from pathlib import Path
 _rscript = None
 
 def _find():
+    # 1. Check R_HOME environment variable (set by Electron main process)
     r_home = os.environ.get('R_HOME', '')
     if r_home:
         direct = Path(r_home) / 'bin' / 'Rscript.exe'
         if direct.exists():
             return str(direct)
+
+    # 2. Check runtime/R/ relative to project root (dev mode)
+    #    r_engine.py 位于 backend/modules/r_engine.py → 项目根 = ../../../
+    try:
+        project_root = Path(__file__).resolve().parent.parent.parent
+        runtime_r = project_root / 'runtime' / 'R'
+        rscript = runtime_r / 'bin' / 'Rscript.exe'
+        if rscript.exists():
+            return str(rscript)
+    except Exception:
+        pass
+
+    # 3. Check common Windows installation paths
     bases = [r_home, 'C:/Program Files/R']
     for base in bases:
         if not base:
@@ -22,6 +36,8 @@ def _find():
             exe = d / 'bin' / 'Rscript.exe'
             if exe.exists():
                 return str(exe)
+
+    # 4. Check PATH
     for d in os.environ.get('PATH', '').split(os.pathsep):
         exe = Path(d) / 'Rscript.exe'
         if exe.exists():

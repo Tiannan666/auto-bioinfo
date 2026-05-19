@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GodVfollower/auto-bioinfo/releases">Download</a> · 
+  <a href="https://github.com/Tiannan666/auto-bioinfo/releases">Download</a> · 
   <a href="#architecture">Architecture</a> · 
   <a href="#installation">Installation</a> · 
   <a href="#analysis-methods">Analysis Methods</a> · 
@@ -30,7 +30,7 @@ BEing Bio is a **hybrid desktop application** with a dual-engine architecture:
 │  │   Frontend (HTML/JS)   │  │     Main Process (Node.js)  ││
 │  │   - Academic Blue UI   │  │     - R runtime management  ││
 │  │   - 13 plot types      │  │     - Python backend launch ││
-│  │   - i18n (CN/EN)       │  │     - Auto-update logic     ││
+│  │   - i18n (CN/EN)       │  │     - R runtime detection   ││
 │  └────────────────────────┘  └─────────────────────────────┘│
 └──────────────────────────────────────────────────────────────┘
                               │
@@ -64,7 +64,7 @@ BEing Bio is a **hybrid desktop application** with a dual-engine architecture:
 | Decision | Rationale |
 |----------|-----------|
 | Electron + Python + R | GUI without browser, statistical power of Python/R, no cloud dependency |
-| Pre-packaged R runtime | Eliminates BiocManager install failures, works offline after first setup |
+| Pre-packaged R runtime | Eliminates BiocManager install failures, works fully offline |
 | Runtime in install directory | User controls disk usage, no hidden C: drive bloat |
 | Python fallback for enrichment | App still works without R for basic analysis (gene database download) |
 | FastAPI backend | RESTful, async, easy to extend, serves both UI and API |
@@ -87,30 +87,30 @@ BEing Bio is a **hybrid desktop application** with a dual-engine architecture:
 
 ### Windows Installer (Recommended)
 
-1. Download `BEing-Bio-Setup-x.x.x.exe` from [Releases](https://github.com/GodVfollower/auto-bioinfo/releases)
+1. Download `BEing-Bio-Setup-x.x.x.exe` from [Releases](https://github.com/Tiannan666/auto-bioinfo/releases)
 2. Run installer — choose any installation directory
-3. First launch: R engine (~450MB) downloads automatically, then extracts
-4. Done. All subsequent launches take 2-3 seconds.
+3. Download the R runtime package from [Releases](https://github.com/Tiannan666/auto-bioinfo/releases) and extract it to the installation directory's `runtime/R/` folder
+4. Launch BEing Bio — all features ready to use
 
 **Requirements:**
 - Windows 10 or 11 (64-bit)
 - ~2GB disk space (app + R runtime)
-- Internet on first launch only (for R engine download)
 - No admin rights needed
 - No Python or R installation needed
 
-### What Happens on First Launch
+### First Launch Behavior
 
 ```
 App starts → Python backend ready (2s)
-           → R engine not found
-           → Show setup window
-           → Download r-runtime.tar.gz from GitHub Release (450MB)
-           → Extract with system tar to {install-dir}/runtime/R/
-           → Done, show main window
+           → Check runtime/R/bin/Rscript.exe
+           ├── ✅ Found → Set R_HOME → Open main window (all features available)
+           └── ❌ Not found → Show dialog: "R environment missing"
+                              → User places R runtime → Retry → Open main window
 ```
 
-The R runtime includes all 10 pre-compiled Bioconductor packages. No compilation, no BiocManager, no mirror issues.
+The app **detects R automatically** at `{install-dir}/runtime/R/`. If the R runtime is not found, a dialog prompts you to place it there. No auto-download — you control where and when to get the runtime.
+
+### File Layout After Installation
 
 ### File Layout After Installation
 
@@ -283,7 +283,7 @@ Only needed for AI text generation. All analysis runs locally without it.
 ## Build from Source
 
 ```bash
-git clone https://github.com/GodVfollower/auto-bioinfo.git
+git clone https://github.com/Tiannan666/auto-bioinfo.git
 cd auto-bioinfo
 
 # Backend (Python)
@@ -299,42 +299,47 @@ npm run build       # NSIS installer -> dist-electron/
 
 ### Preparing R Runtime for Distribution
 
+The R runtime includes R 4.x + all Bioconductor packages. To package one for distribution:
+
 ```bash
 # On a machine with R + Bioconductor installed:
 Rscript -e "
 BiocManager::install(c('DESeq2','edgeR','limma','clusterProfiler',
-  'fgsea','ggplot2','org.Hs.eg.db','org.Mm.eg.db','org.Rn.eg.db','enrichplot'))
+  'fgsea','ggplot2','survival','survminer','WGCNA','enrichplot',
+  'org.Hs.eg.db','org.Mm.eg.db','org.Rn.eg.db'))
 "
 
-# Package (strip docs to reduce size):
+# Package into a zip archive:
 cd "C:/Program Files/R/R-4.x.x"
-tar -czf r-runtime.tar.gz bin/ etc/ modules/ share/ library/
+zip -r r-runtime.zip bin/ etc/ modules/ share/ library/
 
 # Upload to GitHub Release:
-gh release upload v1.0.0 r-runtime.tar.gz
+gh release upload v0.3.0 r-runtime.zip
 ```
+
+Users extract `r-runtime.zip` to `{install-dir}/runtime/R/`.
 
 ---
 
 ## FAQ
 
 **Q: Does this require R to be installed?**
-A: No. R is automatically downloaded as a pre-packaged runtime on first launch. You never interact with R directly.
+A: No. R is included as a pre-packaged runtime that you place in `runtime/R/`. You never interact with R directly.
 
 **Q: Where does data get stored?**
 A: Everything stays in your chosen installation directory under `runtime/` and `data/`. Nothing is written to C:\AppData or other hidden locations.
 
 **Q: Does this use real DESeq2/clusterProfiler?**
-A: Yes. The R engine routes analysis through native Bioconductor packages (DESeq2, clusterProfiler, fgsea) via Rscript subprocess. Results are identical to running R directly.
+A: Yes. The R engine routes analysis through native Bioconductor packages (DESeq2, clusterProfiler, fgsea, survival, WGCNA) via Rscript subprocess. Results are identical to running R directly.
 
-**Q: What if the first-launch download fails?**
-A: The app shows a "Retry" button. Downloads support resume - if interrupted, it picks up where it left off next time. No work is lost.
+**Q: What if R runtime is not found on launch?**
+A: The app shows a dialog "未检测到 R 运行环境" with the expected path. Place the R runtime in `{install-dir}/runtime/R/` and click "Retry". No work is lost.
 
 **Q: Can I use this offline?**
-A: After the initial R engine download, everything works fully offline. Gene annotation databases are included in the pre-packaged R runtime.
+A: Yes. No internet connection is required at any point. The R runtime is placed manually, everything runs fully offline.
 
 **Q: What size is the full installation?**
-A: ~195MB installer + ~450MB R engine download = ~1.5GB total on disk after extraction.
+A: ~195MB installer + ~450MB R runtime (extracted) = ~1.5GB total on disk.
 
 **Q: Can I trust the statistical results for publication?**
 A: Yes. The app calls native Bioconductor packages (DESeq2, clusterProfiler, fgsea) through R subprocess. For citation, reference the original Bioconductor packages directly.
