@@ -112,8 +112,6 @@ The app **detects R automatically** at `{install-dir}/runtime/R/`. If the R runt
 
 ### File Layout After Installation
 
-### File Layout After Installation
-
 ```
 D:\BEing Bio\                    ← User-chosen install path
 ├── BEing Bio.exe                ← Main executable
@@ -130,7 +128,7 @@ D:\BEing Bio\                    ← User-chosen install path
 └── data/                        ← User analysis results
 ```
 
-Everything stays inside the installation directory. Nothing goes to `C:\Users\AppData`.
+Everything stays inside the installation directory. 
 
 ---
 
